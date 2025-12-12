@@ -148,7 +148,7 @@ const ReportView: React.FC<{ project: Project; total: EstimationResult; onBack: 
     );
 };
 
-const App: React.FC = () => {
+export const App: React.FC = () => {
   // --- State ---
   const [projects, setProjects] = useState<Project[]>([
     { 
@@ -277,27 +277,20 @@ const App: React.FC = () => {
           }));
       }
       
-      // Auto close inputs and show list feedback slightly? Or just stay
-      // The prompt asked for "only one button visible" -> usually means clean slate.
-      // We will reset the form for the next item.
       const defaults: Record<string, any> = {};
       MODULE_FIELDS[activeModule].forEach(f => defaults[f.key] = f.defaultValue);
       handleBatchInputChange(defaults);
-      const nextName = generateNextName(activeModule, activeProject.items); // Re-gen name for next item
+      const nextName = generateNextName(activeModule, activeProject.items);
       setCurrentItemName(nextName);
       setEditingItemId(null);
-      // Optional: Show list if user wants to see result, but typically rapid entry is better.
-      // setIsListOpen(true); 
   };
 
   const handleEditItem = (item: SavedItem) => {
       setActiveModule(item.moduleType);
       
-      // Load inputs into the active module slot
       setProjects(prev => prev.map(p => {
           if (p.id !== activeProjectId) return p;
           const newData = { ...p.data };
-          // Re-calculate to ensure results are fresh (though they should match item.result)
           const results = calculateEstimation(item.moduleType, item.inputs);
           newData[item.moduleType] = { inputs: item.inputs, results };
           return { ...p, data: newData };
@@ -305,8 +298,8 @@ const App: React.FC = () => {
 
       setCurrentItemName(item.name);
       setEditingItemId(item.id);
-      setIsListOpen(false); // Close list so user can see inputs
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top
+      setIsListOpen(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteItem = (itemId: string) => {
@@ -404,13 +397,11 @@ const App: React.FC = () => {
   );
 
   const ProjectListModal = () => {
-    // Replaced BottomSheet with a full modal triggered by the Total Cost in TopBar
     const isVisible = isListOpen;
     return (
         <div className={`fixed inset-0 z-[70] flex flex-col transition-all duration-300 ${isVisible ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
              <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-md" onClick={() => setIsListOpen(false)} />
              
-             {/* Content Container - Slide up on mobile, Center on desktop */}
              <div className={`bg-[#F9F9F7] w-full md:w-[600px] md:mx-auto md:my-auto md:rounded-[2.5rem] h-[85vh] md:h-[80vh] absolute bottom-0 md:relative flex flex-col shadow-2xl transition-transform duration-300 ${isVisible ? 'translate-y-0' : 'translate-y-full md:translate-y-10'}`}>
                   {/* Header */}
                   <div className="px-6 py-5 bg-white border-b border-stone-100 flex justify-between items-center rounded-t-[2.5rem]">
@@ -480,8 +471,14 @@ const App: React.FC = () => {
                     <Bars3Icon className="h-5 w-5 md:h-6 md:w-6" />
                 </button>
                 
+                 {/* Desktop Nav */}
+                 <div className="hidden lg:flex bg-white p-1 rounded-xl border border-stone-200 shadow-sm mr-4">
+                    <button onClick={() => setCurrentView('dashboard')} className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${currentView === 'dashboard' ? 'bg-stone-900 text-white' : 'text-stone-500 hover:bg-stone-50'}`}>Dashboard</button>
+                    <button onClick={() => setCurrentView('estimator')} className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${currentView === 'estimator' ? 'bg-stone-900 text-white' : 'text-stone-500 hover:bg-stone-50'}`}>Estimator</button>
+                </div>
+
                 {currentView === 'dashboard' ? (
-                     <h1 className="text-lg md:text-xl font-bold text-stone-800 tracking-tight">Dashboard</h1>
+                     <h1 className="lg:hidden text-lg md:text-xl font-bold text-stone-800 tracking-tight">Dashboard</h1>
                 ) : (
                     <button 
                         onClick={() => setIsModuleSelectorOpen(true)}
@@ -508,7 +505,7 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            {/* Right: Total Cost (Moved from Bottom Sheet) */}
+            {/* Right: Total Cost */}
             {currentView === 'estimator' && (
                 <button 
                     onClick={() => setIsListOpen(true)}
@@ -596,8 +593,6 @@ const App: React.FC = () => {
 
                  {/* Scrollable Form Area */}
                  <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8">
-                     {/* Removed "Reference Name" Input - Auto generated now */}
-
                      <div className="grid grid-cols-2 gap-3 md:gap-4">
                          {MODULE_FIELDS[activeModule].map((field) => {
                              const error = getValidationError(field, currentInputs[field.key]);
@@ -675,95 +670,40 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] font-sans text-stone-900 flex overflow-hidden selection:bg-lime-200">
-      {/* Sidebar */}
-      {currentView !== 'report' && (
-          <aside className={`fixed inset-y-0 left-0 z-50 w-[280px] bg-[#F7F8FA] border-r border-stone-200/60 transform transition-transform duration-300 ease-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-            <div className="p-6 h-full flex flex-col">
-                 {/* Logo */}
-                 <div className="flex items-center gap-3 mb-10 px-2">
-                    <div className="h-9 w-9 rounded-xl bg-lime-400 flex items-center justify-center text-stone-900 font-black text-lg shadow-sm shadow-lime-200">P</div>
-                    <div>
-                        <span className="font-bold text-lg tracking-tight text-stone-900 block leading-none">ProBuild</span>
-                        <span className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Estimator</span>
-                    </div>
-                 </div>
-
-                 <nav className="space-y-2 mb-8">
-                    <button 
-                        onClick={() => { setCurrentView('dashboard'); setIsSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-bold text-sm ${currentView === 'dashboard' ? 'bg-white shadow-sm text-stone-900 ring-1 ring-stone-100' : 'text-stone-500 hover:bg-white/60 hover:text-stone-900'}`}
-                    >
-                        <Squares2X2Icon className="h-5 w-5" /> Dashboard
-                    </button>
-                    <button 
-                        onClick={createProject}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-bold text-sm text-lime-700 bg-lime-100/50 hover:bg-lime-200/50"
-                    >
-                        <PlusIcon className="h-5 w-5" /> New Project
-                    </button>
-                 </nav>
-
-                 <div className="flex-1 overflow-hidden flex flex-col">
-                     <div className="flex items-center justify-between px-2 mb-3">
-                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Your Projects</p>
-                        <FolderIcon className="h-3 w-3 text-stone-300" />
+    <div className="min-h-screen bg-[#F0F2F5] font-sans text-stone-900 selection:bg-lime-200">
+      {currentView === 'report' ? (
+         <ReportView project={activeProject} total={projectGrandTotal} onBack={() => setCurrentView('estimator')} />
+      ) : (
+         <>
+             <TopBar />
+             <main className="h-[calc(100vh-60px)] md:h-[calc(100vh-70px)] overflow-hidden">
+                 {currentView === 'dashboard' ? (
+                     <div className="h-full overflow-y-auto custom-scrollbar">
+                         <Dashboard />
                      </div>
-                     <div className="space-y-2 overflow-y-auto custom-scrollbar pr-2 flex-1">
-                        {projects.map(p => (
-                             <button
-                                key={p.id}
-                                onClick={() => { setActiveProjectId(p.id); setCurrentView('estimator'); setIsSidebarOpen(false); }}
-                                className={`w-full text-left px-4 py-3.5 rounded-2xl text-sm transition-all border group relative overflow-hidden ${
-                                    activeProjectId === p.id && currentView !== 'dashboard' 
-                                    ? 'bg-white border-lime-200 shadow-sm' 
-                                    : 'bg-transparent border-transparent hover:bg-white/60'
-                                }`}
-                             >
-                                 <div className={`font-bold truncate text-base relative z-10 ${activeProjectId === p.id && currentView !== 'dashboard' ? 'text-stone-900' : 'text-stone-500 group-hover:text-stone-800'}`}>{p.name}</div>
-                                 <div className="flex items-center gap-1 mt-1">
-                                     <ClockIcon className="h-3 w-3 text-stone-300" />
-                                     <span className="text-[10px] font-medium text-stone-400">{p.lastModified.toLocaleDateString()}</span>
-                                 </div>
-                                 {activeProjectId === p.id && currentView !== 'dashboard' && <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime-400"></div>}
-                             </button>
-                        ))}
-                     </div>
-                 </div>
-            </div>
-          </aside>
+                 ) : (
+                     <EstimatorView />
+                 )}
+             </main>
+             
+             {/* Modals */}
+             <ModuleSelectorModal />
+             <ProjectListModal />
+             
+             {/* Mobile Sidebar */}
+             <div className={`fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-sm lg:hidden transition-opacity ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsSidebarOpen(false)} />
+             <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-2xl transform transition-transform lg:hidden ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                  <div className="p-6">
+                      <h2 className="text-xl font-black text-stone-900 mb-6">ProBuild</h2>
+                      <div className="space-y-2">
+                          <button onClick={() => { setCurrentView('dashboard'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl font-bold ${currentView === 'dashboard' ? 'bg-lime-400 text-stone-900' : 'text-stone-500 hover:bg-stone-50'}`}>Dashboard</button>
+                          <button onClick={() => { setCurrentView('estimator'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl font-bold ${currentView === 'estimator' ? 'bg-lime-400 text-stone-900' : 'text-stone-500 hover:bg-stone-50'}`}>Estimator</button>
+                          <button onClick={() => { setCurrentView('report'); setIsSidebarOpen(false); }} className={`w-full text-left p-3 rounded-xl font-bold ${currentView === 'report' ? 'bg-lime-400 text-stone-900' : 'text-stone-500 hover:bg-stone-50'}`}>Report</button>
+                      </div>
+                  </div>
+             </div>
+         </>
       )}
-      
-      {/* Mobile Overlay */}
-      {isSidebarOpen && <div className="fixed inset-0 bg-stone-900/20 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />}
-
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full">
-         <TopBar />
-
-         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {currentView === 'dashboard' ? (
-                <div className="py-6 px-4 md:px-10">
-                    <Dashboard />
-                </div>
-            ) : currentView === 'report' ? (
-                <div className="py-6 px-4 md:px-10">
-                    <ReportView project={activeProject} total={projectGrandTotal} onBack={() => setCurrentView('estimator')} />
-                </div>
-            ) : (
-                <EstimatorView />
-            )}
-         </div>
-
-         {/* Modals */}
-         {currentView === 'estimator' && (
-             <>
-                 <ModuleSelectorModal />
-                 <ProjectListModal />
-             </>
-         )}
-      </main>
     </div>
   );
 };
-
-export default App;
