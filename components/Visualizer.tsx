@@ -64,8 +64,6 @@ const DimensionLine = ({
 };
 
 export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightKey }) => {
-  // Removed tab state, we will show both side by side
-
   // --- 1. Normalize Inputs ---
   const vals = useMemo(() => {
     const raw = (k: string, def: number) => {
@@ -446,9 +444,9 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
   };
 
   return (
-    <div className="w-full bg-white rounded-[2rem] border border-stone-200 shadow-sm overflow-hidden flex flex-col h-[200px] sm:h-[280px] md:h-[400px]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-stone-50/50">
+    <div className="w-full bg-white lg:bg-transparent rounded-[2rem] border border-stone-200 lg:border-none shadow-sm lg:shadow-none overflow-hidden flex flex-col h-[250px] lg:h-full lg:min-h-[500px]">
+        {/* Header - Visible on Mobile, Hidden on Desktop */}
+        <div className="flex lg:hidden items-center justify-between px-6 py-4 border-b border-stone-100 bg-stone-50/50">
              <div className="flex items-center gap-2">
                  <CubeIcon className="w-5 h-5 text-stone-400" />
                  <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Geometry Preview</span>
@@ -456,13 +454,13 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
         </div>
 
         {/* Content: Both 3D and 2D side-by-side */}
-        <div className="flex-1 flex flex-row">
+        <div className="flex-1 flex flex-row bg-white lg:bg-transparent lg:rounded-[2rem] lg:border lg:border-stone-200 lg:shadow-sm">
             {/* Left Side: 3D */}
-            <div className="flex-1 relative border-r border-stone-100">
+            <div className="flex-1 relative border-r border-stone-100 bg-white first:rounded-l-[2rem]">
                  <div className="absolute top-4 left-4 z-10 p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
                     <CubeIcon className="w-4 h-4" />
                  </div>
-                 <svg width="100%" height="100%" viewBox="0 0 300 320" className="w-full h-full overflow-visible">
+                 <svg width="100%" height="100%" viewBox="0 0 300 320" preserveAspectRatio="xMidYMid meet" className="w-full h-full overflow-visible">
                      <defs>
                         <pattern id="grid-3d" width="40" height="40" patternUnits="userSpaceOnUse">
                             <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="0.5"/>
@@ -481,11 +479,11 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
             </div>
 
             {/* Right Side: 2D */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative bg-white last:rounded-r-[2rem]">
                  <div className="absolute top-4 left-4 z-10 p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
                     <Square2StackIcon className="w-4 h-4" />
                  </div>
-                 <svg width="100%" height="100%" viewBox="0 0 300 320" className="w-full h-full overflow-visible">
+                 <svg width="100%" height="100%" viewBox="0 0 300 320" preserveAspectRatio="xMidYMid meet" className="w-full h-full overflow-visible">
                      <defs>
                         <pattern id="grid-2d" width="20" height="20" patternUnits="userSpaceOnUse">
                             <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5"/>

@@ -461,8 +461,6 @@ export const App: React.FC = () => {
   };
 
   const TopBar = () => {
-    if (currentView === 'report') return null;
-
     return (
         <div className="sticky top-0 z-30 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between bg-[#F0F2F5]/90 backdrop-blur-md border-b border-white/50">
             {/* Left: Menu & Module Selector */}
@@ -527,9 +525,9 @@ export const App: React.FC = () => {
   };
 
   const EstimatorView = () => (
-    <div className="max-w-[1600px] mx-auto h-full flex flex-col lg:flex-row lg:gap-6 relative">
-        {/* Left Panel: Visualizer */}
-        <div className={`lg:w-7/12 xl:w-2/3 flex flex-col gap-6 lg:p-0 lg:pt-6 transition-all duration-300 ${isVisualizerOpen ? 'p-4' : 'p-0'}`}>
+    <div className="max-w-[1600px] mx-auto h-full flex flex-col lg:flex-row-reverse lg:gap-6 relative">
+        {/* RIGHT PANEL (Desktop): Visualizer */}
+        <div className={`lg:w-1/2 xl:w-7/12 flex flex-col gap-6 lg:p-0 lg:pt-6 transition-all duration-300 ${isVisualizerOpen ? 'p-4' : 'p-0'}`}>
              
              {/* Mobile: Collapsible Trigger */}
              <div className="lg:hidden px-4 pt-4 pb-2">
@@ -545,37 +543,14 @@ export const App: React.FC = () => {
                  </button>
              </div>
 
-             {/* Visualizer Card (Hidden on mobile unless open) */}
-             <div className={`${isVisualizerOpen ? 'block' : 'hidden'} lg:block bg-white rounded-[2rem] border border-stone-200 shadow-sm overflow-hidden h-fit relative group hover:shadow-md transition-shadow mx-4 lg:mx-0`}>
+             {/* Visualizer Card (Hidden on mobile unless open, Always visible and large on Desktop) */}
+             <div className={`${isVisualizerOpen ? 'block' : 'hidden'} lg:block bg-white lg:bg-transparent rounded-[2rem] border border-stone-200 lg:border-none shadow-sm lg:shadow-none overflow-hidden h-fit lg:h-full relative group mx-4 lg:mx-0`}>
                  <Visualizer type={activeModule} inputs={currentInputs} highlightKey={focusedField} />
-             </div>
-             
-             {/* Desktop Stats (Hidden on mobile to save space) */}
-             <div className="hidden lg:block">
-                 <h3 className="text-sm font-bold text-stone-400 uppercase tracking-widest mb-4 ml-2">Quick Stats</h3>
-                 <div className="grid grid-cols-4 gap-4">
-                     <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
-                         <div className="text-xs text-stone-400 font-bold uppercase">Volume</div>
-                         <div className="text-lg font-black text-stone-800 mt-1">{currentResults ? currentResults.details[0]?.split(':')[1] || '-' : '-'}</div>
-                     </div>
-                     <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
-                         <div className="text-xs text-stone-400 font-bold uppercase">Steel</div>
-                         <div className="text-lg font-black text-stone-800 mt-1">{currentResults?.steelKg || 0} kg</div>
-                     </div>
-                     <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
-                         <div className="text-xs text-stone-400 font-bold uppercase">Cement</div>
-                         <div className="text-lg font-black text-stone-800 mt-1">{currentResults?.cementBags || 0} bags</div>
-                     </div>
-                     <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
-                         <div className="text-xs text-stone-400 font-bold uppercase">Est. Cost</div>
-                         <div className="text-lg font-black text-lime-600 mt-1">৳ {currentResults?.totalCost.toLocaleString() || 0}</div>
-                     </div>
-                 </div>
              </div>
         </div>
 
-        {/* Right Panel: Inputs */}
-        <div className="lg:w-5/12 xl:w-1/3 flex flex-col h-full z-10 relative lg:static p-2 md:p-4 lg:p-0 pb-32 lg:pb-6 lg:pt-6">
+        {/* LEFT PANEL (Desktop): Inputs */}
+        <div className="lg:w-1/2 xl:w-5/12 flex flex-col h-full z-10 relative lg:static p-2 md:p-4 lg:p-0 pb-32 lg:pb-6 lg:pt-6">
              <div className={`bg-white rounded-[2.5rem] border shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] shadow-stone-200/40 flex flex-col overflow-hidden relative transition-all duration-300 ${editingItemId ? 'border-amber-400 ring-4 ring-amber-50' : 'border-stone-200'} min-h-[85vh] lg:h-full lg:min-h-0`}>
                  {/* Input Header */}
                  <div className="px-5 py-4 md:px-8 md:py-6 border-b border-stone-100 bg-white/80 backdrop-blur-sm z-10 flex justify-between items-center sticky top-0">
