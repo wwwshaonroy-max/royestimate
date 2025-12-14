@@ -39,11 +39,15 @@ import {
   FolderOpen,
   ArrowRightLeft,
   Zap,
-  Cloud
+  Cloud,
+  MapPin,
+  User as UserIcon,
+  X,
+  Calendar
 } from 'lucide-react';
 
 // --- Types for UI ---
-type ViewState = 'home' | 'project_hub' | 'tool_selector' | 'estimator' | 'report' | 'tools';
+type ViewState = 'home' | 'project_list' | 'project_hub' | 'tool_selector' | 'estimator' | 'report' | 'tools';
 
 const TOOL_CONFIG = [
   // Foundation & Structure
@@ -66,13 +70,13 @@ const TOOL_CONFIG = [
 // --- Sub Components Defined Outside App to prevent Remounting ---
 
 const HomeView: React.FC<{
-    createNewProject: () => void;
+    openNewProjectModal: () => void;
     setActiveTab: (t: 'home'|'estimate'|'report'|'tools') => void;
     setView: (v: ViewState) => void;
     projectsCount: number;
     openTool: (t: ToolType) => void;
     activeProjectName: string;
-}> = ({ createNewProject, setActiveTab, setView, projectsCount, openTool, activeProjectName }) => (
+}> = ({ openNewProjectModal, setActiveTab, setView, projectsCount, openTool, activeProjectName }) => (
     <div className="animate-fade-in pb-32 pt-10">
         {/* Section: Project Management */}
         <div className="mb-8 px-2">
@@ -80,7 +84,7 @@ const HomeView: React.FC<{
             <div className="grid grid-cols-4 gap-y-6">
                 
                 {/* Create New */}
-                <div onClick={createNewProject} className="flex flex-col items-center gap-2 group cursor-pointer">
+                <div onClick={openNewProjectModal} className="flex flex-col items-center gap-2 group cursor-pointer">
                     <div className="w-16 h-16 rounded-2xl bg-[#1c1c1e] border border-white/10 flex items-center justify-center group-active:scale-95 transition-all shadow-lg">
                         <Plus className="w-7 h-7 text-[#007aff]" />
                     </div>
@@ -88,7 +92,7 @@ const HomeView: React.FC<{
                 </div>
 
                 {/* My Projects */}
-                <div onClick={() => { setActiveTab('estimate'); setView('project_hub'); }} className="flex flex-col items-center gap-2 group cursor-pointer">
+                <div onClick={() => { setActiveTab('estimate'); setView('project_list'); }} className="flex flex-col items-center gap-2 group cursor-pointer">
                     <div className="w-16 h-16 rounded-2xl bg-[#1c1c1e] border border-white/10 flex items-center justify-center group-active:scale-95 transition-all shadow-lg relative">
                          <FolderOpen className="w-7 h-7 text-blue-500" />
                          {projectsCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-black">{projectsCount}</span>}
@@ -162,6 +166,152 @@ const HomeView: React.FC<{
     </div>
 );
 
+const ProjectsListView: React.FC<{
+    projects: Project[];
+    openProject: (id: string) => void;
+    deleteProject: (id: string, e: React.MouseEvent) => void;
+    onBack: () => void;
+}> = ({ projects, openProject, deleteProject, onBack }) => {
+    return (
+        <div className="animate-fade-in pb-32">
+             <div className="flex items-center gap-4 mb-8 mt-2">
+               <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                   <ChevronLeft className="w-6 h-6" />
+               </button>
+               <h2 className="text-xl font-semibold text-white">My Projects</h2>
+             </div>
+
+             <div className="space-y-4">
+                 {projects.map(p => (
+                     <div key={p.id} className="bg-[#1c1c1e] p-5 rounded-2xl border border-white/10 flex flex-col gap-3 group">
+                         <div className="flex justify-between items-start">
+                             <div onClick={() => openProject(p.id)} className="cursor-pointer flex-1">
+                                 <h3 className="text-white font-bold text-lg group-hover:text-[#007aff] transition-colors">{p.name}</h3>
+                                 <div className="flex flex-col gap-1 mt-1">
+                                    {p.client && (
+                                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                            <UserIcon className="w-3 h-3" /> {p.client}
+                                        </div>
+                                    )}
+                                    {p.address && (
+                                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                            <MapPin className="w-3 h-3" /> {p.address}
+                                        </div>
+                                    )}
+                                 </div>
+                             </div>
+                             <div className="bg-white/5 rounded-lg px-2 py-1 text-[10px] text-gray-500 font-mono ml-2">
+                                 {p.version}
+                             </div>
+                         </div>
+                         
+                         <div className="h-px bg-white/5 w-full my-1"></div>
+
+                         <div className="flex justify-between items-center">
+                             <div className="flex items-center gap-4 text-xs text-gray-500">
+                                 <div className="flex items-center gap-1">
+                                     <Calendar className="w-3 h-3" /> {p.lastModified.toLocaleDateString()}
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                     <Layers className="w-3 h-3" /> {p.items.length} Items
+                                 </div>
+                             </div>
+                             
+                             <div className="flex items-center gap-2">
+                                 <button 
+                                    onClick={(e) => deleteProject(p.id, e)}
+                                    className="p-2 rounded-full hover:bg-red-500/20 text-gray-500 hover:text-red-500 transition-colors"
+                                 >
+                                     <Trash2 className="w-4 h-4" />
+                                 </button>
+                                 <button 
+                                    onClick={() => openProject(p.id)}
+                                    className="bg-[#007aff] text-white text-xs font-bold px-4 py-2 rounded-xl"
+                                 >
+                                     Continue
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                 ))}
+                 
+                 {projects.length === 0 && (
+                     <div className="text-center py-12 text-gray-500">
+                         No projects found.
+                     </div>
+                 )}
+             </div>
+        </div>
+    )
+}
+
+const NewProjectModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (data: { name: string, client: string, address: string }) => void;
+}> = ({ isOpen, onClose, onSubmit }) => {
+    const [name, setName] = useState('');
+    const [client, setClient] = useState('');
+    const [address, setAddress] = useState('');
+
+    if (!isOpen) return null;
+
+    const handleSubmit = () => {
+        if(!name.trim()) return;
+        onSubmit({ name, client, address });
+        setName(''); setClient(''); setAddress('');
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+            <div className="bg-[#1c1c1e] w-full max-w-sm rounded-[2rem] p-6 relative z-10 border border-white/10 shadow-2xl animate-fade-in">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">
+                    <X className="w-6 h-6" />
+                </button>
+                
+                <h2 className="text-xl font-bold text-white mb-6">Create New Project</h2>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1 mb-1.5 block">Project Name *</label>
+                        <input 
+                            value={name} onChange={e => setName(e.target.value)}
+                            placeholder="e.g. Dream Villa"
+                            className="w-full bg-[#2c2c2e] text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-[#007aff] border border-white/5"
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1 mb-1.5 block">Client / Plant Name</label>
+                        <input 
+                            value={client} onChange={e => setClient(e.target.value)}
+                            placeholder="e.g. Mr. Rahman"
+                            className="w-full bg-[#2c2c2e] text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-[#007aff] border border-white/5"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1 mb-1.5 block">Site Address</label>
+                        <input 
+                            value={address} onChange={e => setAddress(e.target.value)}
+                            placeholder="e.g. Gulshan, Dhaka"
+                            className="w-full bg-[#2c2c2e] text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-[#007aff] border border-white/5"
+                        />
+                    </div>
+                </div>
+
+                <button 
+                    onClick={handleSubmit}
+                    disabled={!name.trim()}
+                    className="w-full bg-[#007aff] text-white font-bold py-3.5 rounded-xl mt-8 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
+                >
+                    Create Project
+                </button>
+            </div>
+        </div>
+    )
+}
+
 const ProjectHubView: React.FC<{
     activeProject: Project;
     setView: (v: ViewState) => void;
@@ -176,9 +326,10 @@ const ProjectHubView: React.FC<{
           {/* Header */}
           <div className="mt-2 mb-6 flex justify-between items-start">
              <div className="flex-1">
-                 <button onClick={() => setView('home')} className="flex items-center gap-1 text-xs text-[#007aff] font-bold uppercase tracking-widest mb-2 hover:underline">
-                    <ChevronLeft className="w-3 h-3" /> Home
+                 <button onClick={() => setView('project_list')} className="flex items-center gap-1 text-xs text-[#007aff] font-bold uppercase tracking-widest mb-2 hover:underline">
+                    <ChevronLeft className="w-3 h-3" /> All Projects
                  </button>
+                 
                  {isEditingProjectName ? (
                      <input 
                         autoFocus
@@ -193,7 +344,20 @@ const ProjectHubView: React.FC<{
                          <Pencil className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors" />
                      </h1>
                  )}
-                 <p className="text-xs text-gray-500 mt-1">Last modified: {activeProject.lastModified.toLocaleDateString()}</p>
+                 
+                 <div className="flex flex-col gap-1 mt-2">
+                     {activeProject.client && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                            <UserIcon className="w-3 h-3" /> {activeProject.client}
+                        </div>
+                     )}
+                     {activeProject.address && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                            <MapPin className="w-3 h-3" /> {activeProject.address}
+                        </div>
+                     )}
+                     <p className="text-[10px] text-gray-500 mt-1">Last modified: {activeProject.lastModified.toLocaleDateString()}</p>
+                 </div>
              </div>
           </div>
 
@@ -607,6 +771,7 @@ export const App: React.FC = () => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | undefined>(undefined);
   const [isEditingProjectName, setIsEditingProjectName] = useState(false);
+  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
 
   // Derived
   const FALLBACK_PROJECT: Project = { 
@@ -653,18 +818,22 @@ export const App: React.FC = () => {
     }
   }, [activeModule, editingItemId, view]); // eslint-disable-line
 
-  const createNewProject = async () => {
+  const handleCreateProject = async (data: { name: string, client: string, address: string }) => {
       if (!user) return;
       const newId = Date.now().toString();
       const newProject: Project = {
           id: newId,
-          name: `Project ${projects.length + 1}`,
+          name: data.name,
+          client: data.client,
+          address: data.address,
           version: 'v1.0',
           lastModified: new Date(),
           data: {},
           items: []
       };
       
+      setIsNewProjectModalOpen(false);
+
       if (user.uid === 'local_offline_user') {
           const updated = [newProject, ...projects];
           setProjects(updated);
@@ -674,7 +843,6 @@ export const App: React.FC = () => {
           setView('project_hub');
       } else {
           await saveProjectToDb(user.uid, newProject);
-          // Subscription will update state, but let's set it optimistically
           setActiveProjectId(newId);
           setActiveTab('estimate');
           setView('project_hub');
@@ -684,24 +852,31 @@ export const App: React.FC = () => {
   const deleteProject = async (pid: string, e: React.MouseEvent) => {
       e.stopPropagation();
       if (!user) return;
-      if (projects.length <= 1) {
-          alert("You must have at least one project.");
+      
+      const projectToDelete = projects.find(p => p.id === pid);
+      if(!projectToDelete) return;
+
+      if (!confirm(`Are you sure you want to delete "${projectToDelete.name}"? This action cannot be undone.`)) {
           return;
       }
-      if (confirm("Are you sure you want to delete this project?")) {
-          const rem = projects.filter(p => p.id !== pid);
-          if (activeProjectId === pid) setActiveProjectId(rem[0].id);
-          
-          if (user.uid === 'local_offline_user') {
-              setProjects(rem);
-              localStorage.setItem('rcc_projects', JSON.stringify(rem));
-              return;
-          }
 
-          try {
-              await deleteDoc(doc(db, "users", user.uid, "projects", pid));
-          } catch(e) { console.error("Delete Error", e); }
+      if (projects.length <= 1) {
+          alert("You must have at least one project. Create a new one before deleting this.");
+          return;
       }
+
+      const rem = projects.filter(p => p.id !== pid);
+      if (activeProjectId === pid) setActiveProjectId(rem[0].id);
+      
+      if (user.uid === 'local_offline_user') {
+          setProjects(rem);
+          localStorage.setItem('rcc_projects', JSON.stringify(rem));
+          return;
+      }
+
+      try {
+          await deleteDoc(doc(db, "users", user.uid, "projects", pid));
+      } catch(e) { console.error("Delete Error", e); }
   };
 
   const updateProjectName = (newName: string) => {
@@ -807,12 +982,25 @@ export const App: React.FC = () => {
       setView('tools');
   };
 
+  const openProject = (id: string) => {
+      setActiveProjectId(id);
+      setActiveTab('estimate');
+      setView('project_hub');
+  };
+
   // --- Main Render ---
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-[#007aff] selection:text-white relative flex items-center justify-center p-0 sm:p-8">
       
       {/* Background ambient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none" />
+
+      {/* New Project Modal */}
+      <NewProjectModal 
+          isOpen={isNewProjectModalOpen}
+          onClose={() => setIsNewProjectModalOpen(false)}
+          onSubmit={handleCreateProject}
+      />
 
       {/* Main Container / Card */}
       <div className="w-full max-w-[420px] bg-[#151516] sm:rounded-[40px] shadow-2xl relative border-x border-b border-white/10 h-[100vh] sm:h-[880px] flex flex-col overflow-hidden ring-1 ring-white/5">
@@ -825,7 +1013,9 @@ export const App: React.FC = () => {
           <div className="flex items-center gap-4">
             <div onClick={() => setView('home')} className="w-16 h-16 rounded-full bg-gradient-to-tr from-pink-500 to-blue-500 p-[2px] cursor-pointer hover:scale-105 transition-transform shadow-lg shadow-blue-500/20 flex-shrink-0 relative z-50">
               <div className="w-full h-full rounded-full bg-[#1c1c1e] overflow-hidden flex items-center justify-center relative">
-                 <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xl">PB</span>
+                 <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xl">
+                   R<span className="text-red-500">O</span>Y
+                 </span>
                  <img 
                     src="my_logo.png" 
                     alt="ProBuild" 
@@ -857,12 +1047,20 @@ export const App: React.FC = () => {
         <div className="relative z-10 flex-1 overflow-y-auto hide-scrollbar px-6">
             {activeTab === 'home' && (
                 <HomeView 
-                    createNewProject={createNewProject}
+                    openNewProjectModal={() => setIsNewProjectModalOpen(true)}
                     setActiveTab={setActiveTab}
                     setView={setView}
                     projectsCount={projects.length}
                     openTool={openTool}
                     activeProjectName={activeProject.name}
+                />
+            )}
+            {activeTab === 'estimate' && view === 'project_list' && (
+                <ProjectsListView 
+                    projects={projects}
+                    openProject={openProject}
+                    deleteProject={deleteProject}
+                    onBack={() => { setActiveTab('home'); setView('home'); }}
                 />
             )}
             {activeTab === 'estimate' && view === 'project_hub' && (
@@ -924,7 +1122,7 @@ export const App: React.FC = () => {
                 icon={Hammer} 
                 label="Estimate" 
                 active={activeTab === 'estimate'} 
-                onClick={() => { setActiveTab('estimate'); setView('project_hub'); }} 
+                onClick={() => { setActiveTab('estimate'); setView('project_list'); }} 
             />
             <NavButton 
                 icon={Layout} 

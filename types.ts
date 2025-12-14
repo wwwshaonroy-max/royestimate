@@ -26,6 +26,8 @@ export interface SavedItem {
 export interface Project {
   id: string;
   name: string;
+  client?: string;
+  address?: string;
   version: string;
   lastModified: Date;
   // Working state for each module (unsaved work)
