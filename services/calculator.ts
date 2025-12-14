@@ -26,6 +26,29 @@ const getRodWeight = (mm: number): number => {
   return (mm * mm) / 533; // Fallback formula
 };
 
+export const getModuleCategory = (type: ModuleType): string => {
+    switch (type) {
+        case ModuleType.PILE:
+        case ModuleType.FOOTING_BOX:
+        case ModuleType.FOOTING_TRAPEZOIDAL:
+            return 'Foundation Work';
+        case ModuleType.COLUMN_RECTANGULAR:
+        case ModuleType.COLUMN_CIRCULAR:
+        case ModuleType.COLUMN_SHORT:
+        case ModuleType.BEAM:
+        case ModuleType.SLAB:
+        case ModuleType.LINTEL:
+        case ModuleType.STAIR:
+        case ModuleType.SUNSHADE:
+            return 'Structural Concrete';
+        case ModuleType.BRICK_WORK:
+        case ModuleType.PLASTER:
+            return 'Finishing Works';
+        default:
+            return 'Other';
+    }
+};
+
 export const calculateGrandTotal = (items: SavedItem[]): EstimationResult => {
     const total = {
         cementBags: 0,
@@ -111,7 +134,7 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
 
       steelKg = mainSteel + spiralSteel;
       details.push(`Wet Vol: ${wetVol.toFixed(2)} cft`);
-      details.push(`Dry Vol: ${dryVol.toFixed(2)} cft`);
+      details.push(`Main: ${getVal('main_rod_nos')} nos ${getVal('main_rod_dia')}mm`);
       break;
     }
 
@@ -142,8 +165,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const sWeight = sNos * sLen * getRodWeight(getVal('short_rod_dia'));
         
         steelKg = (lWeight + sWeight) * count;
-        details.push(`Long Bars: ${lNos} nos @ ${getVal('long_rod_spacing')}" c/c`);
-        details.push(`Short Bars: ${sNos} nos @ ${getVal('short_rod_spacing')}" c/c`);
+        details.push(`Size: ${l}'x${b}'x${getVal('thickness')}"`);
+        details.push(`Long: ${lNos}nos, Short: ${sNos}nos`);
         break;
     }
 
@@ -151,8 +174,7 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const count = getVal('count', 1);
         const L = getVal('length');
         const B = getVal('breadth');
-        const l = getVal('top_length') / 12; // inputs in inch for top part usually, but prompt said feet for base. 
-        // Based on fields: bottom is feet, top is inch
+        const l = getVal('top_length') / 12;
         const bTop = getVal('top_breadth') / 12;
         
         const h1 = getVal('rect_height') / 12;
@@ -173,8 +195,6 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         sandCft = (dryVol * s) / ratioSum;
         aggregateCft = (dryVol * a) / ratioSum;
         
-        // Steel (Approx Grid for bottom mesh only, detailed slope steel is complex)
-        // Assume standard bottom mesh
         const coverFt = getVal('clear_cover', 3) / 12;
         const effL = L - (2*coverFt);
         const effB = B - (2*coverFt);
@@ -187,8 +207,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const steelOneFooting = (nosAlongL * effL * wPerFt) + (nosAlongB * effB * wPerFt);
         
         steelKg = steelOneFooting * count;
-        details.push(`Rect Vol: ${v1.toFixed(2)} cft`);
-        details.push(`Slope Vol: ${v2.toFixed(2)} cft`);
+        details.push(`Base: ${L}'x${B}'`);
+        details.push(`Vol: ${(vol).toFixed(2)} cft`);
         break;
     }
 
@@ -219,7 +239,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const tieSteel = numTies * perimeterFt * getRodWeight(getVal('tie_dia')) * count;
 
         steelKg = mainSteel + tieSteel;
-        details.push(`Wet Vol: ${wetVol.toFixed(2)} cft`);
+        details.push(`Size: ${lIn}"x${wIn}"`);
+        details.push(`Main: ${getVal('main_rod_nos')}nos ${getVal('main_rod_dia')}mm`);
         break;
     }
 
@@ -254,8 +275,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const spiralSteel = totalSpiralLen * getRodWeight(getVal('spiral_dia')) * count;
         
         steelKg = mainSteel + spiralSteel;
-        details.push(`Vol: ${wetVol.toFixed(2)} cft`);
-        details.push(`Spiral Len: ${totalSpiralLen.toFixed(1)} ft`);
+        details.push(`Dia: ${dIn}", Height: ${hFt}'`);
+        details.push(`Spiral: ${getVal('spiral_dia')}mm @ ${getVal('spiral_pitch')}"`);
         break;
     }
 
@@ -286,6 +307,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const stirrupSteel = numStirrups * ringLenFt * getRodWeight(getVal('tie_dia')) * count;
         
         steelKg = mainSteel + stirrupSteel;
+        details.push(`Size: ${wIn}"x${dIn}"`);
+        details.push(`Stirrups: ${getVal('tie_dia')}mm @ ${getVal('stirrup_spacing')}"`);
         break;
     }
 
@@ -312,9 +335,10 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         sandCft = (dryVol * s) / ratioSum;
         aggregateCft = (dryVol * a) / ratioSum;
 
-        // Approx Steel (1.2% of volume) - kept as approx since no inputs were added for Stair in prompt context
+        // Approx Steel (1.2% of volume)
         steelKg = totalWetVol * 0.012 * 222; 
-        details.push(`Wet Vol: ${totalWetVol.toFixed(2)} cft`);
+        details.push(`Steps: ${steps}, Width: ${width}'`);
+        details.push(`Waist: ${waist}", Landing: ${getVal('landing_area')}sft`);
         break;
     }
 
@@ -346,6 +370,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const stirrupSteel = numStirrups * perimFt * getRodWeight(stirrupDia);
 
         steelKg = (mainSteel + stirrupSteel) * count;
+        details.push(`Size: ${wIn}"x${tIn}"`);
+        details.push(`Len: ${lFt}'`);
         break;
     }
 
@@ -365,15 +391,12 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         sandCft = (dryVol * s) / ratioSum;
         aggregateCft = (dryVol * a) / ratioSum;
 
-        // Steel Calculation
-        // Main Bars (Cantilever direction - Projection)
         const mainRodDia = getVal('main_rod_dia', 10);
         const mainSpacingFt = getVal('main_rod_spacing', 6) / 12;
         const numMainBars = Math.ceil(lFt / mainSpacingFt);
         const lenMainBar = projFt + 0.5; // + anchorage
         const mainSteel = numMainBars * lenMainBar * getRodWeight(mainRodDia);
 
-        // Distribution Bars (Longitudinal direction - Length)
         const distRodDia = getVal('dist_rod_dia', 8);
         const distSpacingFt = getVal('dist_rod_spacing', 8) / 12;
         const numDistBars = Math.ceil(projFt / distSpacingFt);
@@ -381,6 +404,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const distSteel = numDistBars * lenDistBar * getRodWeight(distRodDia);
 
         steelKg = (mainSteel + distSteel) * count;
+        details.push(`L: ${lFt}', Proj: ${projIn}"`);
+        details.push(`Main: ${mainRodDia}mm @ ${getVal('main_rod_spacing')}"`);
         break;
     }
 
@@ -399,7 +424,7 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const brickMassVol = wallVol - wetMortarVol;
         const brickCount = brickMassVol / brickVolCft;
 
-        details.push(`Wall Vol: ${wallVol.toFixed(1)} cft`);
+        details.push(`Net Area: ${actualArea} sqft`);
         details.push(`Est. Bricks: ${Math.ceil(brickCount)} Nos`);
         break;
     }
@@ -418,8 +443,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
         const totalLen = barsPerSide * side * 2; 
         
         steelKg = totalLen * 1.1 * getRodWeight(getVal('rod_dia'));
-        details.push(`Wet Vol: ${wetVol.toFixed(2)} cft`);
-        details.push(`Dry Vol: ${dryVol.toFixed(2)} cft`);
+        details.push(`Area: ${getVal('area')} sqft`);
+        details.push(`Thick: ${getVal('thickness')}"`);
         break;
     }
 
@@ -429,6 +454,8 @@ export const calculateEstimation = (type: ModuleType, inputs: Record<string, num
          
          cementBags = ((dryVol * c) / ratioSum) / config.cementBagVol;
          sandCft = (dryVol * s) / ratioSum;
+         details.push(`Area: ${getVal('area')} sqft`);
+         details.push(`Thick: ${getVal('thickness')} mm`);
          break;
     }
   }

@@ -1,5 +1,5 @@
 {
-  "name": "probuild-estimator",
+  "name": "rccbuild-estimator",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "react-dom": "^19.2.3",
+    "lucide-react": "0.263.1",
     "recharts": "2.12.7",
-    "@heroicons/react": "^2.2.0"
+    "@heroicons/react": "^2.2.0",
+    "firebase": "^12.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

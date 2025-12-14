@@ -1,38 +1,59 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  ArrowsRightLeftIcon, 
-  CalculatorIcon, 
-  Square3Stack3DIcon, 
-  ScaleIcon, 
-  PlusIcon,
-  CubeIcon,
-  ArrowsPointingOutIcon,
-  MapIcon,
-  ViewColumnsIcon,
-  RectangleStackIcon,
-  StopIcon,
-  TableCellsIcon,
-  ArrowDownOnSquareIcon,
-  ChevronLeftIcon,
-  SparklesIcon,
-  BeakerIcon,
-  SquaresPlusIcon
-} from '@heroicons/react/24/outline';
+  ArrowRightLeft, 
+  Plus,
+  Box,
+  Trash2,
+  FlaskConical,
+  ChevronLeft,
+  Zap,
+  Coins,
+  Hammer,
+  Component,
+  Scissors
+} from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
+
+// --- Shared Glass Styles ---
+const GLASS_CARD = "bg-[#1c1c1e] border border-white/10 rounded-3xl p-6 shadow-xl relative overflow-hidden";
+const GLASS_INPUT = "bg-[#2c2c2e] text-white border border-white/5 rounded-xl px-4 py-3 w-full focus:outline-none focus:border-[#007aff] focus:ring-1 focus:ring-[#007aff] transition-all";
+const ACTION_BTN = "bg-[#007aff] text-white rounded-xl py-3 px-4 font-semibold shadow-lg shadow-blue-900/20 hover:bg-blue-600 active:scale-95 transition-all flex items-center justify-center gap-2";
 
 // --- Helper: Unit Conversion Factors ---
 const CONVERSION = {
-  length: { m: 1, cm: 0.01, mm: 0.001, ft: 0.3048, in: 0.0254 },
-  area: { sqm: 1, sqft: 0.092903 },
-  volume: { cum: 1, cft: 0.0283168 },
-  mass: { kg: 1, lb: 0.453592, tonne: 1000 }
+  length: { m: 1, cm: 100, mm: 1000, ft: 3.28084, in: 39.3701 },
+  area: { sqm: 1, sqft: 10.7639 },
+  volume: { cum: 1, cft: 35.3147 },
+  mass: { kg: 1, lb: 2.20462, tonne: 0.001 }
 };
 
 type UnitType = 'length' | 'area' | 'volume' | 'mass';
-type ToolType = 'menu' | 'converter' | 'volume' | 'shuttering' | 'steel' | 'mix' | 'flooring';
+export type ToolType = 'menu' | 'converter' | 'volume' | 'steel' | 'mix' | 'construction' | 'bbs';
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  initialTool?: ToolType;
+  onBackToHome?: () => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ initialTool, onBackToHome }) => {
   const [activeView, setActiveView] = useState<ToolType>('menu');
+
+  // Sync with prop if provided
+  useEffect(() => {
+    if (initialTool && initialTool !== 'menu') {
+      setActiveView(initialTool);
+    } else {
+      setActiveView('menu');
+    }
+  }, [initialTool]);
+
+  const handleBack = () => {
+    if (activeView === 'menu') {
+        if (onBackToHome) onBackToHome();
+    } else {
+        setActiveView('menu');
+    }
+  };
 
   // --- Widget 1: Unit Converter State ---
   const [convType, setConvType] = useState<UnitType>('length');
@@ -41,639 +62,557 @@ export const Dashboard: React.FC = () => {
   const [unitTo, setUnitTo] = useState<string>('ft');
 
   const convertedValue = useMemo(() => {
-    const base = convVal * (CONVERSION[convType] as any)[unitFrom];
-    const target = base / (CONVERSION[convType] as any)[unitTo];
-    return target;
+    const factors = CONVERSION[convType] as any;
+    if (!factors[unitFrom] || !factors[unitTo]) return 0;
+    
+    // Let's normalize to Base first. 
+    const valInBase = convVal / factors[unitFrom];
+    const valInTarget = valInBase * factors[unitTo];
+    
+    return valInTarget;
   }, [convType, convVal, unitFrom, unitTo]);
 
   // --- Widget 2: Volume Calc State ---
   const [volItems, setVolItems] = useState<Array<{id: number, desc: string, l: number, w: number, h: number, qty: number, total: number}>>([]);
   const [volInput, setVolInput] = useState({ desc: 'Item 1', l: 10, w: 10, h: 5, qty: 1 });
-  const [volUnit, setVolUnit] = useState<'ft' | 'm'>('ft');
-
+  
   const addVolItem = () => {
     const total = volInput.l * volInput.w * volInput.h * volInput.qty;
     setVolItems([...volItems, { ...volInput, id: Date.now(), total }]);
     setVolInput({ ...volInput, desc: `Item ${volItems.length + 2}` });
   };
   const removeVolItem = (id: number) => setVolItems(volItems.filter(i => i.id !== id));
-  const totalVolume = volItems.reduce((acc, curr) => acc + curr.total, 0);
+  const totalVolume = volItems.reduce((acc, i) => acc + i.total, 0);
 
-  // --- Widget 3: Shuttering State ---
-  const [shutType, setShutType] = useState<'column' | 'beam' | 'slab' | 'wall' | 'footing'>('column');
-  const [shutDim, setShutDim] = useState({ l: 10, w: 12, h: 10 }); 
-  const shutteringArea = useMemo(() => {
-     if (shutType === 'column') return ((2 * (shutDim.l + shutDim.w)) / 12) * shutDim.h;
-     if (shutType === 'beam') return ((shutDim.l + 2 * shutDim.w) / 12) * shutDim.h;
-     if (shutType === 'slab') return shutDim.l * shutDim.w;
-     if (shutType === 'wall') return (2 * shutDim.l * shutDim.w) + (2 * (shutDim.h / 12) * shutDim.w);
-     if (shutType === 'footing') return 2 * (shutDim.l + shutDim.w) * (shutDim.h / 12);
-     return 0;
-  }, [shutType, shutDim]);
-
-  // --- Widget 4: Steel Weight State ---
-  const [steelItems, setSteelItems] = useState<Array<{id: number, dia: number, len: number, qty: number, weight: number}>>([]);
-  const [steelInput, setSteelInput] = useState({ dia: 10, len: 10, qty: 1 });
-  const unitWeight = useMemo(() => {
-      const d = steelInput.dia;
-      return DEFAULT_CONFIG.rodWeights[d] || (d * d) / 533;
-  }, [steelInput.dia]);
-  const addSteelItem = () => {
-      if (steelInput.len <= 0 || steelInput.qty <= 0) return;
-      const weight = unitWeight * steelInput.len * steelInput.qty;
-      setSteelItems([...steelItems, { ...steelInput, id: Date.now(), weight }]);
-  };
-  const removeSteelItem = (id: number) => setSteelItems(steelItems.filter(i => i.id !== id));
-  const totalSteelWeight = steelItems.reduce((acc, i) => acc + i.weight, 0);
-
-  // --- Widget 5: Concrete Mix (NEW) ---
-  const [mixInput, setMixInput] = useState({ vol: 100, unit: 'cft', ratio: '1:1.5:3' });
-  const mixResult = useMemo(() => {
-      const parts = mixInput.ratio.split(':').map(Number);
-      const sum = parts.reduce((a,b) => a+b, 0);
-      const dryCoeff = 1.54;
-      
-      const volCft = mixInput.unit === 'cft' ? mixInput.vol : mixInput.vol * 35.315;
-      const dryVol = volCft * dryCoeff;
-
-      const cementCft = (dryVol * parts[0]) / sum;
-      const sandCft = (dryVol * parts[1]) / sum;
-      const aggCft = (dryVol * parts[2]) / sum;
-
-      return {
-          bags: cementCft / 1.25,
-          sand: sandCft,
-          agg: aggCft
+  // --- Widget 3: Steel Weight State ---
+  const [steelDia, setSteelDia] = useState<number>(10);
+  const [steelLen, setSteelLen] = useState<number>(39); 
+  const [steelQty, setSteelQty] = useState<number>(1);
+  const [steelUnit, setSteelUnit] = useState<'ft' | 'm'>('ft');
+  
+  const steelWeight = useMemo(() => {
+      let unitWeight = 0;
+      if (steelUnit === 'ft') {
+          unitWeight = (steelDia * steelDia) / 533;
+      } else {
+          unitWeight = (steelDia * steelDia) / 162.2;
       }
-  }, [mixInput]);
+      return unitWeight * steelLen * steelQty;
+  }, [steelDia, steelLen, steelQty, steelUnit]);
 
-  // --- Widget 6: Flooring (NEW) ---
-  const [floorInput, setFloorInput] = useState({ l: 12, w: 10, tileL: 24, tileW: 24, boxQty: 4 });
-  const floorResult = useMemo(() => {
-      const areaSqFt = floorInput.l * floorInput.w;
-      const tileAreaSqFt = (floorInput.tileL * floorInput.tileW) / 144;
-      const numTiles = Math.ceil((areaSqFt * 1.05) / tileAreaSqFt); // 5% wastage
-      const boxes = Math.ceil(numTiles / floorInput.boxQty);
-      return { area: areaSqFt, numTiles, boxes };
-  }, [floorInput]);
+  const estimatedCost = steelWeight * DEFAULT_CONFIG.rates.steel;
 
-  // --- Render Components ---
+  // --- Widget 4: Construction (Site Calc) State ---
+  const [constType, setConstType] = useState<'column' | 'beam' | 'slab'>('column');
+  const [constInput, setConstInput] = useState({ l: 10, w: 10, h: 10, qty: 1 });
 
-  const MenuCard = ({ id, title, icon: Icon, colorClass, bgClass }: any) => (
-      <button 
-        onClick={() => setActiveView(id)}
-        className="group flex flex-col items-center justify-center p-4 rounded-[2rem] bg-white border border-stone-100 shadow-sm hover:shadow-xl hover:shadow-stone-200/50 hover:border-lime-200 transition-all duration-300 active:scale-95 aspect-[1/1] w-full relative overflow-hidden"
-      >
-          <div className={`p-4 rounded-2xl ${bgClass} ${colorClass} mb-3 group-hover:scale-110 transition-transform duration-300`}>
-              <Icon className="h-8 w-8" />
-          </div>
-          <h3 className="text-sm font-bold text-stone-700 text-center leading-tight tracking-tight">{title}</h3>
-      </button>
+  const constructionResult = useMemo(() => {
+      const { l, w, h, qty } = constInput;
+      let shuttering = 0; // Sft
+      let casting = 0;    // Cft
+
+      if (constType === 'column') {
+          shuttering = (2 * (l + w) / 12) * h * qty;
+          casting = ((l * w) / 144) * h * qty;
+      } else if (constType === 'beam') {
+          shuttering = ((2 * w + l) / 12) * h * qty; 
+          casting = ((l * w) / 144) * h * qty;
+      } else if (constType === 'slab') {
+          shuttering = l * w * qty;
+          casting = l * w * (h / 12) * qty;
+      }
+
+      return { shuttering, casting };
+  }, [constType, constInput]);
+
+  // --- Widget 5: BBS State ---
+  const [bbsType, setBbsType] = useState<'stirrup' | 'ring' | 'crank'>('stirrup');
+  const [bbsInput, setBbsInput] = useState({ 
+      l: 12, // Width or Length
+      w: 12, // Depth or Breadth
+      d: 10, // Dia in mm
+      cover: 1.5, // inches
+      span: 12, // ft for crank
+      depth: 6, // inch for slab depth
+      bearing: 6 // inch for Ld/Bearing
+  });
+
+  const bbsResult = useMemo(() => {
+      let cuttingLenInches = 0;
+      let formula = '';
+      const { l, w, d, cover, span, depth, bearing } = bbsInput;
+      const barDiaInches = d / 25.4; // mm to inches
+
+      if (bbsType === 'stirrup') {
+          // Rectangular Stirrup
+          const A = l - 2 * cover;
+          const B = w - 2 * cover;
+          
+          if (A <= 0 || B <= 0) return { feet:0, inch:0, totalInch:0, formula: 'Invalid Dims' };
+
+          // Formula: 2(A+B) + Hooks(2x10d) - Bends(3x2d for 90deg + 2x3d for 135deg)
+          // Hooks = 20d
+          // Bends = 6d + 6d = 12d
+          // Net = 2(A+B) + 8d
+          const netSteelAdd = 8 * barDiaInches;
+          cuttingLenInches = 2 * (A + B) + netSteelAdd;
+          formula = '2(A+B) + 8d';
+      } else if (bbsType === 'ring') {
+          // Circular Ring
+          const coreD = l - 2 * cover;
+          if (coreD <= 0) return { feet:0, inch:0, totalInch:0, formula: 'Invalid Dims' };
+          
+          // Formula: Pi*D + 20d (Hooks) - 2*3d (Bends) => Pi*D + 14d
+          const netSteelAdd = 14 * barDiaInches;
+          cuttingLenInches = (Math.PI * coreD) + netSteelAdd;
+          formula = 'π(D-2c) + 14d';
+      } else if (bbsType === 'crank') {
+          // Crank / Bent-up Bar
+          // L = Clear Span (ft to in) + 2*Bearing
+          const clearSpanIn = span * 12;
+          const bearings = 2 * bearing;
+          
+          // Crank Height H
+          // H = SlabDepth - 2*Cover - BarDia
+          const H = depth - (2 * cover) - barDiaInches;
+          
+          if (H <= 0) return { feet:0, inch:0, totalInch:0, formula: 'Invalid Depth' };
+
+          // Inclined Length Increase = 0.42 * H per crank.
+          // Assume Double Crank (both sides).
+          const crankAdd = 2 * (0.42 * H);
+          
+          // Bend Deduction: 4 bends of 45 deg.
+          // 1d per 45 deg. Total 4d.
+          const bendDed = 4 * (1 * barDiaInches);
+
+          cuttingLenInches = clearSpanIn + bearings + crankAdd - bendDed;
+          formula = 'L + 2Ld + 2(0.42H) - 4d';
+      }
+
+      const feet = Math.floor(cuttingLenInches / 12);
+      const inch = (cuttingLenInches % 12);
+      
+      return { feet, inch, totalInch: cuttingLenInches, formula };
+  }, [bbsType, bbsInput]);
+
+
+  // --- Views ---
+
+  const MenuView = () => (
+      <div className="grid grid-cols-2 gap-4 animate-fade-in pt-4">
+          <button onClick={() => setActiveView('construction')} className={`${GLASS_CARD} flex flex-col items-center justify-center gap-3 p-6 hover:bg-[#2c2c2e] hover:border-white/20 active:scale-95 transition-all group`}>
+              <div className="bg-blue-500/20 p-4 rounded-2xl text-blue-500 group-hover:scale-110 transition-transform">
+                  <Hammer className="w-8 h-8" />
+              </div>
+              <div className="text-center">
+                <span className="font-semibold text-lg text-white block">Site Calc</span>
+                <span className="text-[10px] text-gray-500">Shuttering & Casting</span>
+              </div>
+          </button>
+          
+          <button onClick={() => setActiveView('bbs')} className={`${GLASS_CARD} flex flex-col items-center justify-center gap-3 p-6 hover:bg-[#2c2c2e] hover:border-white/20 active:scale-95 transition-all group`}>
+              <div className="bg-teal-500/20 p-4 rounded-2xl text-teal-500 group-hover:scale-110 transition-transform">
+                  <Scissors className="w-8 h-8" />
+              </div>
+              <div className="text-center">
+                <span className="font-semibold text-lg text-white block">Bar Bending</span>
+                <span className="text-[10px] text-gray-500">Cutting Length</span>
+              </div>
+          </button>
+
+          <button onClick={() => setActiveView('converter')} className={`${GLASS_CARD} flex flex-col items-center justify-center gap-3 p-6 hover:bg-[#2c2c2e] hover:border-white/20 active:scale-95 transition-all group`}>
+              <div className="bg-orange-500/20 p-4 rounded-2xl text-orange-500 group-hover:scale-110 transition-transform">
+                  <ArrowRightLeft className="w-8 h-8" />
+              </div>
+              <span className="font-semibold text-lg text-white">Converter</span>
+          </button>
+
+          <button onClick={() => setActiveView('steel')} className={`${GLASS_CARD} flex flex-col items-center justify-center gap-3 p-6 hover:bg-[#2c2c2e] hover:border-white/20 active:scale-95 transition-all group`}>
+              <div className="bg-red-500/20 p-4 rounded-2xl text-red-500 group-hover:scale-110 transition-transform">
+                  <Zap className="w-8 h-8" />
+              </div>
+              <span className="font-semibold text-lg text-white">Steel Calc</span>
+          </button>
+
+          <button onClick={() => setActiveView('volume')} className={`${GLASS_CARD} flex flex-col items-center justify-center gap-3 p-6 hover:bg-[#2c2c2e] hover:border-white/20 active:scale-95 transition-all group`}>
+              <div className="bg-emerald-500/20 p-4 rounded-2xl text-emerald-500 group-hover:scale-110 transition-transform">
+                  <Box className="w-8 h-8" />
+              </div>
+              <span className="font-semibold text-lg text-white">Volume</span>
+          </button>
+      </div>
   );
 
-  const ToolHeader = ({ title, icon: Icon, colorClass }: any) => (
-      <div className="flex items-center gap-4 mb-8">
-          <button 
-            onClick={() => setActiveView('menu')}
-            className="p-3 rounded-full bg-white border border-stone-200 text-stone-500 hover:text-stone-900 hover:border-stone-300 transition-colors shadow-sm"
-          >
-              <ChevronLeftIcon className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${colorClass} bg-opacity-10 text-opacity-100`}>
-                  <Icon className={`h-6 w-6 ${colorClass.replace('bg-', 'text-')}`} />
+  const BBSView = () => (
+      <div className="space-y-6 animate-fade-in">
+          {/* Tabs */}
+          <div className="flex bg-[#2c2c2e] p-1 rounded-xl">
+              <button onClick={() => { setBbsType('stirrup'); setBbsInput({...bbsInput, l:12, w:12})}} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${bbsType === 'stirrup' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-400'}`}>Stirrup</button>
+              <button onClick={() => { setBbsType('ring'); setBbsInput({...bbsInput, l:18})}} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${bbsType === 'ring' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-400'}`}>Ring</button>
+              <button onClick={() => { setBbsType('crank'); setBbsInput({...bbsInput, span:12, depth:6, bearing: 6})}} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${bbsType === 'crank' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-400'}`}>Crank</button>
+          </div>
+
+          <div className={GLASS_CARD}>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                 {bbsType === 'stirrup' && (
+                     <>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Width (A) (in)</label>
+                            <input type="number" value={bbsInput.l} onChange={(e) => setBbsInput({...bbsInput, l: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Depth (B) (in)</label>
+                            <input type="number" value={bbsInput.w} onChange={(e) => setBbsInput({...bbsInput, w: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                     </>
+                 )}
+                 {bbsType === 'ring' && (
+                     <div className="col-span-2">
+                        <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Diameter (in)</label>
+                        <input type="number" value={bbsInput.l} onChange={(e) => setBbsInput({...bbsInput, l: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                     </div>
+                 )}
+                 {bbsType === 'crank' && (
+                     <>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Clear Span (ft)</label>
+                            <input type="number" value={bbsInput.span} onChange={(e) => setBbsInput({...bbsInput, span: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Slab Thick (in)</label>
+                            <input type="number" value={bbsInput.depth} onChange={(e) => setBbsInput({...bbsInput, depth: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Bearing/Ld (Each Side) (in)</label>
+                            <input type="number" value={bbsInput.bearing} onChange={(e) => setBbsInput({...bbsInput, bearing: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                     </>
+                 )}
+                 
+                 <div>
+                    <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Clear Cover (in)</label>
+                    <input type="number" value={bbsInput.cover} onChange={(e) => setBbsInput({...bbsInput, cover: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                 </div>
+                 <div>
+                    <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Bar Dia (mm)</label>
+                    <select value={bbsInput.d} onChange={(e) => setBbsInput({...bbsInput, d: parseFloat(e.target.value)})} className={GLASS_INPUT}>
+                        <option value="8">8 mm</option>
+                        <option value="10">10 mm</option>
+                        <option value="12">12 mm</option>
+                        <option value="16">16 mm</option>
+                        <option value="20">20 mm</option>
+                    </select>
+                 </div>
               </div>
-              <h2 className="text-2xl font-black text-stone-900 tracking-tight">{title}</h2>
+
+              <div className="bg-white/5 border border-white/5 rounded-2xl p-6 text-center">
+                   <div className="flex items-center justify-center gap-2 mb-2">
+                       <Scissors className="w-5 h-5 text-teal-400" />
+                       <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Cutting Length</span>
+                   </div>
+                   
+                   <div className="text-4xl font-bold text-white mb-2">
+                       {bbsResult.feet}' <span className="text-teal-400">{bbsResult.inch.toFixed(2)}"</span>
+                   </div>
+                   <div className="text-sm text-gray-500 mb-4">
+                       Total: {bbsResult.totalInch.toFixed(2)} inches
+                   </div>
+
+                   <div className="text-[10px] bg-black/30 py-1 px-3 rounded-full inline-block text-gray-400">
+                       Formula: {bbsResult.formula}
+                   </div>
+              </div>
+          </div>
+      </div>
+  );
+
+  const ConstructionView = () => (
+      <div className="space-y-6 animate-fade-in">
+          {/* Tabs */}
+          <div className="flex bg-[#2c2c2e] p-1 rounded-xl">
+              <button onClick={() => { setConstType('column'); setConstInput({l:12, w:12, h:10, qty:1})}} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${constType === 'column' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-400'}`}>Column</button>
+              <button onClick={() => { setConstType('beam'); setConstInput({l:10, w:15, h:20, qty:1})}} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${constType === 'beam' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-400'}`}>Beam</button>
+              <button onClick={() => { setConstType('slab'); setConstInput({l:20, w:30, h:6, qty:1})}} className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${constType === 'slab' ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-400'}`}>Slab</button>
+          </div>
+
+          <div className={GLASS_CARD}>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                 {constType === 'column' && (
+                     <>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Length (Inch)</label>
+                            <input type="number" value={constInput.l} onChange={(e) => setConstInput({...constInput, l: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Width (Inch)</label>
+                            <input type="number" value={constInput.w} onChange={(e) => setConstInput({...constInput, w: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Height (Feet)</label>
+                            <input type="number" value={constInput.h} onChange={(e) => setConstInput({...constInput, h: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                     </>
+                 )}
+                 {constType === 'beam' && (
+                     <>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Width (Inch)</label>
+                            <input type="number" value={constInput.l} onChange={(e) => setConstInput({...constInput, l: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Depth (Inch)</label>
+                            <input type="number" value={constInput.w} onChange={(e) => setConstInput({...constInput, w: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Length (Feet)</label>
+                            <input type="number" value={constInput.h} onChange={(e) => setConstInput({...constInput, h: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                     </>
+                 )}
+                 {constType === 'slab' && (
+                     <>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Length (Feet)</label>
+                            <input type="number" value={constInput.l} onChange={(e) => setConstInput({...constInput, l: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Width (Feet)</label>
+                            <input type="number" value={constInput.w} onChange={(e) => setConstInput({...constInput, w: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                        <div>
+                            <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Thick. (Inch)</label>
+                            <input type="number" value={constInput.h} onChange={(e) => setConstInput({...constInput, h: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                        </div>
+                     </>
+                 )}
+                 <div>
+                    <label className="text-gray-500 text-[10px] font-bold uppercase mb-1 block">Qty (Nos)</label>
+                    <input type="number" value={constInput.qty} onChange={(e) => setConstInput({...constInput, qty: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                 </div>
+              </div>
+
+              <div className="space-y-3">
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-orange-500/20 text-orange-500"><Component className="w-5 h-5"/></div>
+                          <div>
+                              <span className="text-xs text-gray-400 block font-medium">Shuttering Area</span>
+                              <span className="text-[10px] text-gray-600">Formwork required</span>
+                          </div>
+                      </div>
+                      <div className="text-right">
+                          <span className="text-xl font-bold text-white block">{constructionResult.shuttering.toFixed(2)}</span>
+                          <span className="text-xs text-gray-500">Sq. Feet (Sft)</span>
+                      </div>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-500"><Box className="w-5 h-5"/></div>
+                          <div>
+                              <span className="text-xs text-gray-400 block font-medium">Casting Volume</span>
+                              <span className="text-[10px] text-gray-600">Wet Concrete</span>
+                          </div>
+                      </div>
+                      <div className="text-right">
+                          <span className="text-xl font-bold text-white block">{constructionResult.casting.toFixed(2)}</span>
+                          <span className="text-xs text-gray-500">Cubic Feet (Cft)</span>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  );
+
+  const ConverterView = () => (
+      <div className="space-y-6 animate-fade-in">
+          <div className="flex bg-[#2c2c2e] p-1 rounded-xl">
+              {(['length', 'area', 'volume', 'mass'] as UnitType[]).map(t => (
+                  <button 
+                    key={t}
+                    onClick={() => { setConvType(t); setUnitFrom(Object.keys(CONVERSION[t])[0]); setUnitTo(Object.keys(CONVERSION[t])[1]); }}
+                    className={`flex-1 py-2 text-xs font-medium rounded-lg capitalize transition-all ${convType === t ? 'bg-[#007aff] text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                  >
+                      {t}
+                  </button>
+              ))}
+          </div>
+
+          <div className={`${GLASS_CARD} space-y-6`}>
+              <div>
+                  <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2 block">From</label>
+                  <div className="flex gap-2">
+                      <input 
+                        type="number" 
+                        value={convVal} 
+                        onChange={(e) => setConvVal(parseFloat(e.target.value) || 0)} 
+                        className={GLASS_INPUT}
+                      />
+                      <select 
+                        value={unitFrom} 
+                        onChange={(e) => setUnitFrom(e.target.value)}
+                        className={`${GLASS_INPUT} w-24`}
+                      >
+                          {Object.keys(CONVERSION[convType]).map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                  </div>
+              </div>
+
+              <div className="flex justify-center -my-2">
+                  <div className="bg-[#2c2c2e] p-2 rounded-full border border-white/10 text-gray-400">
+                      <ArrowRightLeft className="w-5 h-5 rotate-90" />
+                  </div>
+              </div>
+
+              <div>
+                  <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2 block">To</label>
+                  <div className="flex gap-2">
+                      <div className={`${GLASS_INPUT} flex items-center bg-[#2c2c2e]/50 font-bold text-xl`}>
+                          {convertedValue.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                      </div>
+                      <select 
+                        value={unitTo} 
+                        onChange={(e) => setUnitTo(e.target.value)}
+                        className={`${GLASS_INPUT} w-24`}
+                      >
+                          {Object.keys(CONVERSION[convType]).map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                  </div>
+              </div>
+          </div>
+      </div>
+  );
+
+  const SteelView = () => (
+      <div className="space-y-6 animate-fade-in">
+          <div className={GLASS_CARD}>
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-red-500 fill-red-500" /> Steel Calc
+                </h3>
+                <div className="flex bg-[#2c2c2e] rounded-lg p-1">
+                    <button onClick={() => { setSteelUnit('ft'); setSteelLen(39); }} className={`px-3 py-1 text-xs rounded-md transition-all ${steelUnit === 'ft' ? 'bg-red-500 text-white' : 'text-gray-400'}`}>Feet</button>
+                    <button onClick={() => { setSteelUnit('m'); setSteelLen(12); }} className={`px-3 py-1 text-xs rounded-md transition-all ${steelUnit === 'm' ? 'bg-red-500 text-white' : 'text-gray-400'}`}>Meter</button>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                  <div>
+                      <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1.5 block">Rod Diameter (mm)</label>
+                      <select value={steelDia} onChange={(e) => setSteelDia(Number(e.target.value))} className={GLASS_INPUT}>
+                          {[8,10,12,16,20,22,25,32].map(d => <option key={d} value={d}>{d} mm</option>)}
+                      </select>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                      <div>
+                          <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1.5 block">Length ({steelUnit})</label>
+                          <input type="number" value={steelLen} onChange={(e) => setSteelLen(parseFloat(e.target.value))} className={GLASS_INPUT} />
+                          <div className="flex gap-2 mt-2">
+                             <button onClick={() => setSteelLen(steelUnit === 'ft' ? 39 : 12)} className="bg-white/5 hover:bg-white/10 text-[10px] py-1 px-2 rounded border border-white/5 text-gray-300">
+                                 Std ({steelUnit === 'ft' ? '39ft' : '12m'})
+                             </button>
+                             <button onClick={() => setSteelLen(1)} className="bg-white/5 hover:bg-white/10 text-[10px] py-1 px-2 rounded border border-white/5 text-gray-300">
+                                 Unit (1)
+                             </button>
+                          </div>
+                      </div>
+                      <div>
+                          <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1.5 block">Quantity</label>
+                          <input type="number" value={steelQty} onChange={(e) => setSteelQty(parseFloat(e.target.value))} className={GLASS_INPUT} />
+                      </div>
+                  </div>
+              </div>
+
+              <div className="mt-6 pt-6 border-t border-white/10">
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-gray-500 text-xs uppercase font-bold tracking-wider">Total Weight</span>
+                    <span className="text-4xl font-bold text-white leading-none">
+                        {steelWeight.toFixed(2)} <span className="text-base font-medium text-gray-500">kg</span>
+                    </span>
+                  </div>
+                  
+                  <div className="bg-white/5 rounded-xl p-3 flex justify-between items-center border border-white/5">
+                      <div className="flex items-center gap-2 text-gray-400">
+                          <Coins className="w-4 h-4" />
+                          <span className="text-xs font-medium">Est. Cost (@{DEFAULT_CONFIG.rates.steel}/kg)</span>
+                      </div>
+                      <span className="font-bold text-emerald-400">৳ {estimatedCost.toLocaleString()}</span>
+                  </div>
+
+                  <p className="text-[10px] text-gray-600 mt-3 text-center">
+                      Formula: {steelUnit === 'ft' ? '(D² / 533.33) × L' : '(D² / 162.2) × L'}
+                  </p>
+              </div>
+          </div>
+      </div>
+  );
+
+  const VolumeView = () => (
+      <div className="space-y-4 animate-fade-in h-full flex flex-col">
+          <div className={`${GLASS_CARD} p-4`}>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                  <input placeholder="Item Name" value={volInput.desc} onChange={(e) => setVolInput({...volInput, desc: e.target.value})} className={`${GLASS_INPUT} col-span-4 mb-2`} />
+                  <input type="number" placeholder="L" value={volInput.l} onChange={(e) => setVolInput({...volInput, l: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                  <input type="number" placeholder="W" value={volInput.w} onChange={(e) => setVolInput({...volInput, w: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                  <input type="number" placeholder="H" value={volInput.h} onChange={(e) => setVolInput({...volInput, h: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+                  <input type="number" placeholder="Qty" value={volInput.qty} onChange={(e) => setVolInput({...volInput, qty: parseFloat(e.target.value)})} className={GLASS_INPUT} />
+              </div>
+              <button onClick={addVolItem} className={`${ACTION_BTN} w-full py-2`}>
+                  <Plus className="w-5 h-5" /> Add
+              </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-2 pb-32">
+              {volItems.map(item => (
+                  <div key={item.id} className="bg-[#1c1c1e] p-4 rounded-2xl border border-white/5 flex justify-between items-center animate-fade-in">
+                      <div>
+                          <div className="text-sm font-bold text-white">{item.desc}</div>
+                          <div className="text-[10px] text-gray-500">
+                             {item.l} x {item.w} x {item.h} • Qty: {item.qty}
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                          <span className="text-emerald-400 font-bold">{item.total.toFixed(2)}</span>
+                          <button onClick={() => removeVolItem(item.id)} className="text-gray-600 hover:text-red-500 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                          </button>
+                      </div>
+                  </div>
+              ))}
+              
+              {volItems.length > 0 && (
+                  <div className="bg-[#007aff]/10 border border-[#007aff]/20 p-4 rounded-2xl mt-4">
+                      <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold uppercase text-[#007aff] tracking-wider">Total Volume</span>
+                          <span className="text-2xl font-bold text-white">{totalVolume.toFixed(2)} <span className="text-sm font-normal text-gray-400">cft</span></span>
+                      </div>
+                  </div>
+              )}
           </div>
       </div>
   );
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto animate-fade-in min-h-[80vh]">
-      
-      {/* --- MENU VIEW --- */}
-      {activeView === 'menu' && (
-          <div className="space-y-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-stone-100">
-                  <div>
-                      <h1 className="text-3xl font-black text-stone-900 tracking-tight flex items-center gap-2">
-                          <SparklesIcon className="h-8 w-8 text-lime-500" />
-                          Engineering Suite
-                      </h1>
-                      <p className="text-stone-500 mt-2 font-medium">Professional tools for daily estimation</p>
-                  </div>
-              </div>
+    <div className="h-full flex flex-col">
+       {/* Dashboard Header */}
+       <div className="flex items-center gap-4 mb-6 mt-2">
+            <button onClick={handleBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                <ChevronLeft className="w-6 h-6" />
+            </button>
+            <h2 className="text-xl font-semibold text-white capitalize">{activeView === 'menu' ? 'Tools Dashboard' : activeView}</h2>
+       </div>
 
-              {/* Tools Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  <MenuCard 
-                      id="mix"
-                      title="Concrete Mix"
-                      icon={BeakerIcon}
-                      colorClass="text-emerald-600"
-                      bgClass="bg-emerald-50"
-                  />
-                  <MenuCard 
-                      id="steel"
-                      title="Steel Weight"
-                      icon={ScaleIcon}
-                      colorClass="text-slate-600"
-                      bgClass="bg-slate-50"
-                  />
-                  <MenuCard 
-                      id="shuttering"
-                      title="Shuttering Area"
-                      icon={CalculatorIcon}
-                      colorClass="text-rose-600"
-                      bgClass="bg-rose-50"
-                  />
-                  <MenuCard 
-                      id="volume"
-                      title="Volume Calc"
-                      icon={Square3Stack3DIcon}
-                      colorClass="text-amber-600"
-                      bgClass="bg-amber-50"
-                  />
-                  <MenuCard 
-                      id="flooring"
-                      title="Tiles & Floor"
-                      icon={SquaresPlusIcon}
-                      colorClass="text-cyan-600"
-                      bgClass="bg-cyan-50"
-                  />
-                  <MenuCard 
-                      id="converter"
-                      title="Unit Converter"
-                      icon={ArrowsRightLeftIcon}
-                      colorClass="text-indigo-600"
-                      bgClass="bg-indigo-50"
-                  />
-              </div>
-          </div>
-      )}
-
-      {/* --- CONCRETE MIX TOOL (NEW) --- */}
-      {activeView === 'mix' && (
-          <div className="max-w-2xl mx-auto">
-              <ToolHeader title="Concrete Mix Designer" icon={BeakerIcon} colorClass="bg-emerald-100 text-emerald-600" />
-              <div className="bg-white rounded-[2rem] border border-stone-200 shadow-xl p-8 space-y-8">
-                  <div className="grid grid-cols-2 gap-6">
-                      <div className="col-span-1">
-                          <label className="label-xs">Wet Volume</label>
-                          <div className="flex gap-2">
-                              <input type="number" value={mixInput.vol} onChange={e => setMixInput({...mixInput, vol: parseFloat(e.target.value)})} className="input-base" />
-                              <select value={mixInput.unit} onChange={e => setMixInput({...mixInput, unit: e.target.value})} className="bg-stone-50 rounded-xl font-bold text-sm px-2">
-                                  <option value="cft">cft</option>
-                                  <option value="cum">m³</option>
-                              </select>
-                          </div>
-                      </div>
-                      <div className="col-span-1">
-                          <label className="label-xs">Mix Ratio</label>
-                          <select value={mixInput.ratio} onChange={e => setMixInput({...mixInput, ratio: e.target.value})} className="input-base cursor-pointer">
-                              <option value="1:1:2">M25 (1:1:2)</option>
-                              <option value="1:1.5:3">M20 (1:1.5:3)</option>
-                              <option value="1:2:4">M15 (1:2:4)</option>
-                              <option value="1:3:6">M10 (1:3:6)</option>
-                              <option value="1:4:8">M7.5 (1:4:8)</option>
-                          </select>
-                      </div>
-                  </div>
-
-                  <div className="bg-emerald-50 rounded-3xl p-8 border border-emerald-100">
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                          <div className="bg-white p-4 rounded-2xl shadow-sm">
-                              <div className="text-3xl font-black text-emerald-700">{Math.ceil(mixResult.bags)}</div>
-                              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">Cement Bags</div>
-                          </div>
-                          <div className="bg-white p-4 rounded-2xl shadow-sm">
-                              <div className="text-3xl font-black text-stone-700">{mixResult.sand.toFixed(1)}</div>
-                              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">Sand (cft)</div>
-                          </div>
-                          <div className="bg-white p-4 rounded-2xl shadow-sm">
-                              <div className="text-3xl font-black text-stone-700">{mixResult.agg.toFixed(1)}</div>
-                              <div className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">Agg (cft)</div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* --- FLOORING TOOL (NEW) --- */}
-      {activeView === 'flooring' && (
-          <div className="max-w-2xl mx-auto">
-              <ToolHeader title="Flooring Calculator" icon={SquaresPlusIcon} colorClass="bg-cyan-100 text-cyan-600" />
-              <div className="bg-white rounded-[2rem] border border-stone-200 shadow-xl p-8">
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div><label className="label-xs">Room Length (ft)</label><input type="number" value={floorInput.l} onChange={e => setFloorInput({...floorInput, l: parseFloat(e.target.value)})} className="input-base" /></div>
-                      <div><label className="label-xs">Room Width (ft)</label><input type="number" value={floorInput.w} onChange={e => setFloorInput({...floorInput, w: parseFloat(e.target.value)})} className="input-base" /></div>
-                      <div><label className="label-xs">Tile Length (inch)</label><input type="number" value={floorInput.tileL} onChange={e => setFloorInput({...floorInput, tileL: parseFloat(e.target.value)})} className="input-base" /></div>
-                      <div><label className="label-xs">Tile Width (inch)</label><input type="number" value={floorInput.tileW} onChange={e => setFloorInput({...floorInput, tileW: parseFloat(e.target.value)})} className="input-base" /></div>
-                      <div className="col-span-2"><label className="label-xs">Tiles per Box</label><input type="number" value={floorInput.boxQty} onChange={e => setFloorInput({...floorInput, boxQty: parseFloat(e.target.value)})} className="input-base" /></div>
-                  </div>
-                  
-                  <div className="bg-cyan-50 p-6 rounded-2xl border border-cyan-100 flex justify-between items-center">
-                      <div>
-                          <span className="text-xs font-bold text-cyan-800 uppercase block mb-1">Total Tiles Needed</span>
-                          <span className="text-4xl font-black text-cyan-600">{floorResult.numTiles}</span>
-                          <span className="text-xs text-cyan-600 ml-2 font-medium">(inc 5% wastage)</span>
-                      </div>
-                      <div className="text-right">
-                          <span className="text-xs font-bold text-cyan-800 uppercase block mb-1">Total Boxes</span>
-                          <span className="text-4xl font-black text-cyan-600">{floorResult.boxes}</span>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* --- CONVERTER TOOL (Refined) --- */}
-      {activeView === 'converter' && (
-          <div className="max-w-2xl mx-auto">
-              <ToolHeader title="Unit Converter" icon={ArrowsRightLeftIcon} colorClass="bg-indigo-100 text-indigo-600" />
-              <div className="bg-white rounded-[2rem] border border-stone-200 shadow-xl p-6 md:p-8">
-                {/* Type Selector */}
-                <div className="grid grid-cols-4 gap-3 mb-8">
-                    {[
-                        { id: 'length', icon: ArrowsPointingOutIcon, label: 'Length' },
-                        { id: 'area', icon: MapIcon, label: 'Area' },
-                        { id: 'volume', icon: CubeIcon, label: 'Volume' },
-                        { id: 'mass', icon: ScaleIcon, label: 'Mass' }
-                    ].map((item) => (
-                        <button 
-                           key={item.id}
-                           onClick={() => { 
-                               setConvType(item.id as UnitType); 
-                               setUnitFrom(Object.keys(CONVERSION[item.id as UnitType])[0]); 
-                               setUnitTo(Object.keys(CONVERSION[item.id as UnitType])[1]); 
-                           }}
-                           className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 ${
-                               convType === item.id 
-                               ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 transform scale-105' 
-                               : 'bg-white border-transparent text-stone-400 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100'
-                           }`}
-                        >
-                            <item.icon className="h-6 w-6 mb-2" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
-                        </button>
-                    ))}
-                </div>
-
-                {/* Conversion Interface */}
-                <div className="bg-stone-50 rounded-2xl p-6 border border-stone-100 space-y-6">
-                    <div>
-                        <label className="text-xs font-bold text-stone-400 uppercase mb-2 block px-1">From Value</label>
-                        <div className="flex gap-4">
-                            <input 
-                                type="number" 
-                                value={convVal} 
-                                onChange={(e) => setConvVal(parseFloat(e.target.value) || 0)}
-                                className="flex-1 p-4 bg-white border border-stone-200 rounded-xl font-mono text-2xl font-bold text-stone-900 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition-all"
-                            />
-                            <select 
-                                value={unitFrom}
-                                onChange={(e) => setUnitFrom(e.target.value)}
-                                className="w-24 p-2 bg-white border border-stone-200 rounded-xl text-sm font-bold text-stone-600 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                            >
-                                {Object.keys(CONVERSION[convType]).map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-center">
-                        <div className="bg-white p-2 rounded-full border border-stone-200 shadow-sm text-stone-400">
-                            <ArrowsRightLeftIcon className="h-5 w-5 rotate-90" />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-bold text-stone-400 uppercase mb-2 block px-1">Result</label>
-                        <div className="flex gap-4">
-                            <div className="flex-1 p-4 bg-indigo-50 border border-indigo-100 rounded-xl font-mono text-2xl font-bold text-indigo-700 overflow-hidden">
-                                {convertedValue.toFixed(4)}
-                            </div>
-                            <select 
-                                value={unitTo}
-                                onChange={(e) => setUnitTo(e.target.value)}
-                                className="w-24 p-2 bg-white border border-stone-200 rounded-xl text-sm font-bold text-stone-600 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                            >
-                                {Object.keys(CONVERSION[convType]).map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-              </div>
-          </div>
-      )}
-
-      {/* --- VOLUME TOOL --- */}
-      {activeView === 'volume' && (
-          <div className="max-w-3xl mx-auto">
-              <ToolHeader title="Volume Calculator" icon={Square3Stack3DIcon} colorClass="bg-amber-100 text-amber-600" />
-              <div className="bg-white rounded-[2rem] border border-stone-200 shadow-xl p-6 md:p-8">
-                  <div className="flex justify-end mb-6">
-                       <div className="flex bg-stone-100 p-1 rounded-lg">
-                           <button onClick={() => setVolUnit('ft')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${volUnit === 'ft' ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-700'}`}>Feet</button>
-                           <button onClick={() => setVolUnit('m')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${volUnit === 'm' ? 'bg-white shadow text-stone-900' : 'text-stone-500 hover:text-stone-700'}`}>Meter</button>
-                       </div>
-                  </div>
-
-                  {/* Input Row */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8 items-end bg-stone-50 p-6 rounded-2xl border border-stone-100">
-                      <div className="md:col-span-3">
-                          <label className="label-xs">Item Name</label>
-                          <input type="text" value={volInput.desc} onChange={e => setVolInput({...volInput, desc: e.target.value})} className="input-base" placeholder="e.g. Footing 1" />
-                      </div>
-                      <div className="md:col-span-2">
-                          <label className="label-xs">Length</label>
-                          <input type="number" value={volInput.l} onChange={e => setVolInput({...volInput, l: parseFloat(e.target.value)})} className="input-base" />
-                      </div>
-                      <div className="md:col-span-2">
-                          <label className="label-xs">Width</label>
-                          <input type="number" value={volInput.w} onChange={e => setVolInput({...volInput, w: parseFloat(e.target.value)})} className="input-base" />
-                      </div>
-                      <div className="md:col-span-2">
-                          <label className="label-xs">Height</label>
-                          <input type="number" value={volInput.h} onChange={e => setVolInput({...volInput, h: parseFloat(e.target.value)})} className="input-base" />
-                      </div>
-                      <div className="md:col-span-1">
-                          <label className="label-xs">Qty</label>
-                          <input type="number" value={volInput.qty} onChange={e => setVolInput({...volInput, qty: parseFloat(e.target.value)})} className="input-base" />
-                      </div>
-                      <div className="md:col-span-2">
-                          <button onClick={addVolItem} className="w-full p-3 bg-stone-900 hover:bg-black text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 shadow-lg shadow-stone-200 transition-all active:scale-95">
-                              <PlusIcon className="h-4 w-4" /> Add
-                          </button>
-                      </div>
-                  </div>
-
-                  {/* List */}
-                  <div className="space-y-3 mb-8">
-                      {volItems.length === 0 ? (
-                          <div className="py-12 flex flex-col items-center justify-center text-stone-300 border-2 border-dashed border-stone-100 rounded-2xl bg-stone-50/50">
-                              <Square3Stack3DIcon className="h-12 w-12 mb-3 opacity-50" />
-                              <span className="text-sm font-medium">Add dimensions to calculate volume</span>
-                          </div>
-                      ) : volItems.map(item => (
-                          <div key={item.id} className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-xl shadow-sm hover:border-amber-200 transition-colors group">
-                              <div className="flex items-center gap-4">
-                                  <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm">
-                                      {item.qty}x
-                                  </div>
-                                  <div>
-                                      <div className="font-bold text-stone-800">{item.desc}</div>
-                                      <div className="text-xs text-stone-400 font-medium mt-0.5">
-                                          {item.l} x {item.w} x {item.h} {volUnit}
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="flex items-center gap-6">
-                                  <div className="text-right">
-                                      <div className="text-lg font-black text-stone-900">{item.total.toFixed(2)}</div>
-                                      <div className="text-[10px] font-bold text-stone-400 uppercase">{volUnit === 'ft' ? 'cft' : 'cum'}</div>
-                                  </div>
-                                  <button onClick={() => removeVolItem(item.id)} className="text-stone-300 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50">
-                                      <ScaleIcon className="h-5 w-5" />
-                                  </button>
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* --- SHUTTERING TOOL --- */}
-      {activeView === 'shuttering' && (
-          <div className="max-w-2xl mx-auto">
-              <ToolHeader title="Shuttering Calculator" icon={CalculatorIcon} colorClass="bg-rose-100 text-rose-600" />
-              <div className="bg-white rounded-[2rem] border border-stone-200 shadow-xl p-6 md:p-8">
-                  {/* Type Grid */}
-                  <div className="grid grid-cols-5 gap-3 mb-8">
-                       {[
-                          { id: 'column', icon: ViewColumnsIcon, label: 'Column' },
-                          { id: 'beam', icon: RectangleStackIcon, label: 'Beam' },
-                          { id: 'slab', icon: StopIcon, label: 'Slab' },
-                          { id: 'wall', icon: TableCellsIcon, label: 'Wall' },
-                          { id: 'footing', icon: ArrowDownOnSquareIcon, label: 'Footing' }
-                       ].map((item) => (
-                           <button 
-                              key={item.id}
-                              onClick={() => setShutType(item.id as any)}
-                              className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 ${
-                                  shutType === item.id 
-                                  ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-200 transform scale-105' 
-                                  : 'bg-white border-stone-100 text-stone-400 hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100'
-                              }`}
-                           >
-                               <item.icon className="h-6 w-6 mb-2" />
-                               <span className="text-[10px] font-bold uppercase tracking-wide">{item.label}</span>
-                           </button>
-                       ))}
-                  </div>
-
-                  <div className="bg-stone-50 rounded-2xl p-6 border border-stone-100 mb-8">
-                        {shutType === 'column' && (
-                            <div className="space-y-4">
-                                <div className="section-badge bg-rose-100 text-rose-600">Column: 4 Side Contact Area</div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="label-xs">Size L (Inch)</label><input type="number" value={shutDim.l} onChange={e => setShutDim({...shutDim, l: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div><label className="label-xs">Size W (Inch)</label><input type="number" value={shutDim.w} onChange={e => setShutDim({...shutDim, w: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div className="col-span-2"><label className="label-xs">Height (Feet)</label><input type="number" value={shutDim.h} onChange={e => setShutDim({...shutDim, h: parseFloat(e.target.value)})} className="input-base" /></div>
-                                </div>
-                            </div>
-                        )}
-                        {/* (Other Shuttering inputs same as logic, just updated UI classes) */}
-                        {shutType === 'beam' && (
-                            <div className="space-y-4">
-                                <div className="section-badge bg-rose-100 text-rose-600">Beam: Bottom + 2 Sides</div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="label-xs">Width (Inch)</label><input type="number" value={shutDim.l} onChange={e => setShutDim({...shutDim, l: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div><label className="label-xs">Depth (Inch)</label><input type="number" value={shutDim.w} onChange={e => setShutDim({...shutDim, w: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div className="col-span-2"><label className="label-xs">Length (Feet)</label><input type="number" value={shutDim.h} onChange={e => setShutDim({...shutDim, h: parseFloat(e.target.value)})} className="input-base" /></div>
-                                </div>
-                            </div>
-                        )}
-                        {shutType === 'slab' && (
-                             <div className="space-y-4">
-                                <div className="section-badge bg-rose-100 text-rose-600">Slab: Bottom Contact Area</div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="label-xs">Length (Feet)</label><input type="number" value={shutDim.l} onChange={e => setShutDim({...shutDim, l: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div><label className="label-xs">Width (Feet)</label><input type="number" value={shutDim.w} onChange={e => setShutDim({...shutDim, w: parseFloat(e.target.value)})} className="input-base" /></div>
-                                </div>
-                             </div>
-                        )}
-                        {shutType === 'wall' && (
-                             <div className="space-y-4">
-                                 <div className="section-badge bg-rose-100 text-rose-600">Shear Wall: 2 Faces + 2 Ends</div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="label-xs">Length (Feet)</label><input type="number" value={shutDim.l} onChange={e => setShutDim({...shutDim, l: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div><label className="label-xs">Height (Feet)</label><input type="number" value={shutDim.w} onChange={e => setShutDim({...shutDim, w: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div className="col-span-2"><label className="label-xs">Thickness (Inch)</label><input type="number" value={shutDim.h} onChange={e => setShutDim({...shutDim, h: parseFloat(e.target.value)})} className="input-base" /></div>
-                                </div>
-                             </div>
-                        )}
-                        {shutType === 'footing' && (
-                             <div className="space-y-4">
-                                 <div className="section-badge bg-rose-100 text-rose-600">Footing: Side Contact Area</div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="label-xs">Length (Feet)</label><input type="number" value={shutDim.l} onChange={e => setShutDim({...shutDim, l: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div><label className="label-xs">Width (Feet)</label><input type="number" value={shutDim.w} onChange={e => setShutDim({...shutDim, w: parseFloat(e.target.value)})} className="input-base" /></div>
-                                    <div className="col-span-2"><label className="label-xs">Depth (Inch)</label><input type="number" value={shutDim.h} onChange={e => setShutDim({...shutDim, h: parseFloat(e.target.value)})} className="input-base" /></div>
-                                </div>
-                             </div>
-                        )}
-                  </div>
-
-                  <div className="bg-rose-50 p-6 rounded-2xl border border-rose-100 flex justify-between items-center">
-                      <span className="text-sm font-bold text-rose-500 uppercase tracking-wide">Required Area</span>
-                      <div className="text-right">
-                          <div className="text-4xl font-black text-rose-600">{shutteringArea.toFixed(2)}</div>
-                          <div className="text-xs font-bold text-rose-400 uppercase tracking-widest mt-1">Sq. Feet</div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* --- STEEL TOOL --- */}
-      {activeView === 'steel' && (
-          <div className="max-w-2xl mx-auto">
-              <ToolHeader title="Steel Weight" icon={ScaleIcon} colorClass="bg-slate-200 text-slate-700" />
-              <div className="bg-white rounded-[2rem] border border-stone-200 shadow-xl p-6 md:p-8">
-                  {/* Diameter Selector */}
-                  <div className="mb-8">
-                       <label className="label-xs mb-3">Select Bar Diameter (mm)</label>
-                       <div className="flex flex-wrap gap-3">
-                           {[8, 10, 12, 16, 20, 25, 32].map(d => (
-                               <button 
-                                  key={d}
-                                  onClick={() => setSteelInput({...steelInput, dia: d})}
-                                  className={`h-14 w-14 rounded-full flex flex-col items-center justify-center border-2 transition-all duration-200 relative ${
-                                      steelInput.dia === d 
-                                      ? 'bg-slate-800 border-slate-800 text-white shadow-lg scale-110 z-10' 
-                                      : 'bg-white border-stone-200 text-stone-400 hover:border-slate-400 hover:text-slate-600'
-                                  }`}
-                               >
-                                   <span className="text-sm font-bold leading-none">{d}</span>
-                                   <span className="text-[9px] opacity-60">mm</span>
-                               </button>
-                           ))}
-                       </div>
-                  </div>
-                  
-                  {/* Input Form */}
-                  <div className="bg-stone-50 p-6 rounded-2xl border border-stone-100 grid grid-cols-5 gap-4 items-end mb-8">
-                       <div className="col-span-2">
-                           <label className="label-xs">Length (ft)</label>
-                           <input 
-                              type="number" 
-                              value={steelInput.len}
-                              onChange={e => setSteelInput({...steelInput, len: parseFloat(e.target.value) || 0})}
-                              className="input-base"
-                           />
-                       </div>
-                       <div className="col-span-2">
-                           <label className="label-xs">Count (Nos)</label>
-                           <input 
-                              type="number" 
-                              value={steelInput.qty}
-                              onChange={e => setSteelInput({...steelInput, qty: parseFloat(e.target.value) || 0})}
-                              className="input-base"
-                           />
-                       </div>
-                       <div className="col-span-1">
-                          <button onClick={addSteelItem} className="w-full h-[42px] bg-slate-800 hover:bg-black text-white rounded-xl flex items-center justify-center transition-all shadow-lg shadow-slate-200">
-                              <PlusIcon className="h-5 w-5" />
-                          </button>
-                       </div>
-                  </div>
-
-                  {/* Items List */}
-                  <div className="space-y-3 mb-8 max-h-[300px] overflow-y-auto custom-scrollbar">
-                      {steelItems.length === 0 ? (
-                           <div className="py-8 flex flex-col items-center justify-center text-stone-300 border-2 border-dashed border-stone-100 rounded-2xl">
-                              <span className="text-sm font-medium">Add bars to calculate weight</span>
-                           </div>
-                      ) : (
-                          steelItems.map(item => (
-                              <div key={item.id} className="flex items-center justify-between p-3 bg-white border border-stone-100 rounded-xl shadow-sm text-sm group">
-                                  <div className="flex items-center gap-3">
-                                      <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs border border-slate-200">
-                                          {item.dia}
-                                      </div>
-                                      <div className="text-stone-600">
-                                          <span className="font-bold text-stone-900">{item.qty}</span> bars x <span className="font-bold text-stone-900">{item.len}</span> ft
-                                      </div>
-                                  </div>
-                                  <div className="flex items-center gap-4">
-                                      <span className="font-bold text-slate-700 text-lg">{item.weight.toFixed(2)} <span className="text-xs font-normal text-stone-400">kg</span></span>
-                                      <button onClick={() => removeSteelItem(item.id)} className="text-stone-300 hover:text-red-500 transition-colors">
-                                          <ScaleIcon className="h-4 w-4" />
-                                      </button>
-                                  </div>
-                              </div>
-                          ))
-                      )}
-                  </div>
-
-                  {/* Footer Total */}
-                  <div className="bg-slate-800 text-white p-6 rounded-2xl shadow-xl relative overflow-hidden">
-                       <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '8px 8px' }}></div>
-                       
-                       <div className="relative z-10 flex justify-between items-center">
-                           <div>
-                               <span className="text-xs text-slate-400 font-bold uppercase block">Total Items</span>
-                               <span className="text-lg font-bold text-white">{steelItems.length}</span>
-                           </div>
-                           <div className="text-right">
-                               <div className="text-xs font-bold text-slate-400 uppercase mb-1">Total Weight</div>
-                               <div className="text-4xl font-black text-white leading-none">{totalSteelWeight.toFixed(2)} <span className="text-sm text-slate-400 font-bold">kg</span></div>
-                           </div>
-                       </div>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      <style>{`
-        .input-base {
-            width: 100%;
-            padding: 0.75rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            outline: none;
-            transition: all 0.2s;
-            background-color: #fff;
-        }
-        .input-base:focus {
-            border-color: #a3e635; /* Lime-400 */
-            box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.2);
-        }
-        .label-xs {
-            display: block;
-            font-size: 0.65rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: #a8a29e;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
-        }
-        .section-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-        }
-      `}</style>
+       {/* View Renderer */}
+       <div className="flex-1 overflow-hidden">
+           {activeView === 'menu' && <MenuView />}
+           {activeView === 'converter' && <ConverterView />}
+           {activeView === 'volume' && <VolumeView />}
+           {activeView === 'steel' && <SteelView />}
+           {activeView === 'construction' && <ConstructionView />}
+           {activeView === 'bbs' && <BBSView />}
+       </div>
     </div>
   );
 };

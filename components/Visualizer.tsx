@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ModuleType } from '../types';
-import { CubeIcon, Square2StackIcon } from '@heroicons/react/24/outline';
 
 interface VisualizerProps {
   type: ModuleType;
@@ -44,19 +43,24 @@ const DimensionLine = ({
   const mx = (sX + eX) / 2;
   const my = (sY + eY) / 2;
 
-  const lineColor = active ? "#65a30d" : "#a8a29e"; // Lime-600 vs Stone-400
-  const textColor = active ? "#365314" : "#57534e"; 
-  const textBg = active ? "#d9f99d" : "#f5f5f4";
+  // Dark Mode Colors
+  const lineColor = active ? "#3b82f6" : "#4b5563"; // Blue-500 vs Gray-600
+  const textColor = active ? "#60a5fa" : "#9ca3af"; // Blue-400 vs Gray-400
+  const textBg = active ? "#1e3a8a" : "#1f2937"; // Dark Blue vs Dark Gray
+  const fontSize = active ? 12 : 10;
 
   return (
-    <g className="transition-all duration-500 ease-in-out" style={{ opacity: active ? 1 : 0.6 }}>
-       <line x1={start.x} y1={start.y} x2={sX} y2={sY} stroke={lineColor} strokeWidth={0.5} strokeDasharray="2,2" opacity={0.5} />
-       <line x1={end.x} y1={end.y} x2={eX} y2={eY} stroke={lineColor} strokeWidth={0.5} strokeDasharray="2,2" opacity={0.5} />
-       <line x1={sX} y1={sY} x2={eX} y2={eY} stroke={lineColor} strokeWidth={active ? 2 : 1} />
-       <circle cx={sX} cy={sY} r={active ? 2.5 : 1.5} fill={lineColor} />
-       <circle cx={eX} cy={eY} r={active ? 2.5 : 1.5} fill={lineColor} />
-       <rect x={mx - 18} y={my - 9} width="36" height="18" rx="9" fill={textBg} stroke={lineColor} strokeWidth={active ? 1.5 : 0.5} />
-       <text x={mx} y={my} dy="1" textAnchor="middle" dominantBaseline="middle" fontSize={active ? "11" : "9"} fontWeight="bold" fill={textColor} style={{ pointerEvents: 'none' }}>
+    <g className="transition-all duration-500 ease-in-out" style={{ opacity: active ? 1 : 0.7 }}>
+       {/* Extension Lines */}
+       <line x1={start.x} y1={start.y} x2={sX} y2={sY} stroke={lineColor} strokeWidth={0.5} strokeDasharray="3,3" opacity={0.5} />
+       <line x1={end.x} y1={end.y} x2={eX} y2={eY} stroke={lineColor} strokeWidth={0.5} strokeDasharray="3,3" opacity={0.5} />
+       
+       {/* Main Dimension Line */}
+       <line x1={sX} y1={sY} x2={eX} y2={eY} stroke={lineColor} strokeWidth={active ? 1.5 : 1} markerEnd="url(#arrowhead)" markerStart="url(#arrowhead-start)" />
+       
+       {/* Label Background & Text */}
+       <rect x={mx - (label.length * 3.5 + 6)} y={my - 9} width={label.length * 7 + 12} height="18" rx="6" fill={textBg} stroke={lineColor} strokeWidth={active ? 1 : 0} opacity={0.95} />
+       <text x={mx} y={my} dy="1" textAnchor="middle" dominantBaseline="middle" fontSize={fontSize} fontWeight="700" fill={textColor} style={{ pointerEvents: 'none', fontFamily: 'Inter, sans-serif' }}>
          {label}
        </text>
     </g>
@@ -77,7 +81,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
     };
     
     // Default Dimensions (Inches unless specified)
-    let l=0, w=0, h=0, d=0, labelL="L", labelW="B", labelH="H";
+    let l=0, w=0, h=0, d=0, labelL="L", labelW="B", labelH="H", labelD="D";
     let cover = raw('clear_cover', 1.5);
     let mainNos = Math.max(4, raw('main_rod_nos', 4));
     let spacing = raw('tie_spacing', 6) || raw('stirrup_spacing', 6) || raw('spiral_pitch', 6);
@@ -96,7 +100,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
         case ModuleType.PILE:
              d = raw('diameter', 18);
              h = (raw('height', 0) || raw('length', 0)) * 12;
-             labelL = `D: ${d}"`; labelH = `H: ${h/12}'`;
+             labelD = `D: ${d}"`; labelH = `H: ${h/12}'`;
              isVertical = true;
              break;
         case ModuleType.BEAM:
@@ -122,7 +126,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
         default:
              l = 30; w = 30; h = 30;
     }
-    return { l, w, h, d, labelL, labelW, labelH, cover, mainNos, spacing, isVertical };
+    return { l, w, h, d, labelL, labelW, labelH, labelD, cover, mainNos, spacing, isVertical };
   }, [inputs, type]);
 
   // --- 2. Robust Auto-Scaling Engine ---
@@ -164,13 +168,13 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
           if (highlightKey.includes('length') || highlightKey.includes('dia')) {
               if(d > 0) { const pt = iso(0,0, h); focusX = pt.x; focusY = pt.y; } 
               else { const pt = iso(l/2, 0, 0); focusX = pt.x; focusY = pt.y; } 
-              zoomLevel = 1.5; hasFocus = true;
-          } else if (highlightKey.includes('width') || highlightKey.includes('breadth')) {
+              zoomLevel = 1.4; hasFocus = true;
+          } else if (highlightKey.includes('width') || highlightKey.includes('breadth') || highlightKey.includes('projection')) {
                const pt = iso(0, w/2, 0); focusX = pt.x; focusY = pt.y;
-               zoomLevel = 1.5; hasFocus = true;
+               zoomLevel = 1.4; hasFocus = true;
           } else if (highlightKey.includes('height') || highlightKey.includes('depth') || highlightKey.includes('thick')) {
                const pt = iso(0, 0, h/2); focusX = pt.x; focusY = pt.y;
-               zoomLevel = 1.4; hasFocus = true;
+               zoomLevel = 1.3; hasFocus = true;
           }
       }
 
@@ -212,7 +216,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
   }, [vals]);
 
   const focus3D = getFocusTransform(transform3D.scale, transform3D.tx, transform3D.ty, 300, 320);
-  const getFocus2D = () => highlightKey ? { x: 0, y: 0, scale: 1.3 } : { x: 0, y: 0, scale: 1 };
+  const getFocus2D = () => highlightKey ? { x: 0, y: 0, scale: 1.2 } : { x: 0, y: 0, scale: 1 };
   const focus2D = getFocus2D();
 
   // --- 3D Renderers ---
@@ -222,8 +226,8 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
       const { scale: s, tx, ty } = transform3D;
       const toScreen = (p: Point) => ({ x: p.x * s + tx, y: p.y * s + ty });
 
-      const barColor = "#dc2626"; // Red
-      const tieColor = "#4b5563"; // Gray
+      const barColor = "#f87171"; // Red-400
+      const tieColor = "#94a3b8"; // Slate-400
       
       const elements: React.ReactElement[] = [];
 
@@ -249,7 +253,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
               const center = toScreen(iso(r, r, z));
               const rx = coreR * s;
               const ry = coreR * SIN30 * s;
-              elements.push(<ellipse key={`tie-${i}`} cx={center.x} cy={center.y} rx={rx} ry={ry} fill="none" stroke={tieColor} strokeWidth={1} />);
+              elements.push(<ellipse key={`tie-${i}`} cx={center.x} cy={center.y} rx={rx} ry={ry} fill="none" stroke={tieColor} strokeWidth={0.8} />);
           }
       } else {
           // --- Box Rebar ---
@@ -274,7 +278,6 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
               
               // Extra bars distribution
               if (mainNos > 4) {
-                 const extra = mainNos - 4;
                  // Add to long sides
                  const midX = ox + cl/2;
                  const p1 = toScreen(iso(midX, oy, oz)); const p2 = toScreen(iso(midX, oy, oz+ch));
@@ -294,7 +297,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
                       toScreen(iso(ox, oy+cw, z))
                   ];
                   const d = `M${pts[0].x} ${pts[0].y} L${pts[1].x} ${pts[1].y} L${pts[2].x} ${pts[2].y} L${pts[3].x} ${pts[3].y} Z`;
-                  elements.push(<path key={`tie-${i}`} d={d} fill="none" stroke={tieColor} strokeWidth={1} />);
+                  elements.push(<path key={`tie-${i}`} d={d} fill="none" stroke={tieColor} strokeWidth={0.8} />);
               }
 
           } else {
@@ -322,7 +325,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
                       toScreen(iso(x, oy, oz+ch))
                   ];
                   const d = `M${pts[0].x} ${pts[0].y} L${pts[1].x} ${pts[1].y} L${pts[2].x} ${pts[2].y} L${pts[3].x} ${pts[3].y} Z`;
-                  elements.push(<path key={`tie-${i}`} d={d} fill="none" stroke={tieColor} strokeWidth={1} />);
+                  elements.push(<path key={`tie-${i}`} d={d} fill="none" stroke={tieColor} strokeWidth={0.8} />);
               }
           }
       }
@@ -330,14 +333,14 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
   };
 
   const Render3DContent = () => {
-      const { l, w, h, d, labelL, labelW, labelH } = vals;
+      const { l, w, h, d, labelL, labelW, labelH, labelD } = vals;
       const { scale: s, tx, ty } = transform3D;
       const toScreen = (p: Point) => ({ x: p.x * s + tx, y: p.y * s + ty });
 
       // Highlight Logic
       const isH = highlightKey?.includes('height') || highlightKey?.includes('depth') || highlightKey?.includes('thick');
       const isL = highlightKey?.includes('len') || highlightKey?.includes('dia');
-      const isW = highlightKey?.includes('width') || highlightKey?.includes('breadth');
+      const isW = highlightKey?.includes('width') || highlightKey?.includes('breadth') || highlightKey?.includes('projection');
 
       if (d > 0) { // Cylinder
           const r = d/2;
@@ -350,16 +353,15 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
           return (
              <g>
                 {/* Back / Inside */}
-                <ellipse cx={S_bc.x} cy={S_bc.y} rx={rx} ry={ry} fill="#f5f5f4" stroke="#d6d3d1" />
+                <ellipse cx={S_bc.x} cy={S_bc.y} rx={rx} ry={ry} fill="#111827" stroke="#374151" />
                 <RenderRebar />
                 
                 {/* Body (Glass Effect) */}
-                <path d={`M${S_tl.x} ${S_tl.y} L${S_bl.x} ${S_bl.y} A ${rx} ${ry} 0 0 0 ${S_br.x} ${S_br.y} L${S_tr.x} ${S_tr.y}`} fill="url(#concrete-grad)" stroke="#a8a29e" strokeWidth="1" className="opacity-30" />
-                <ellipse cx={S_tc.x} cy={S_tc.y} rx={rx} ry={ry} fill="#e7e5e4" stroke="#a8a29e" strokeWidth="1" className="opacity-40" />
+                <path d={`M${S_tl.x} ${S_tl.y} L${S_bl.x} ${S_bl.y} A ${rx} ${ry} 0 0 0 ${S_br.x} ${S_br.y} L${S_tr.x} ${S_tr.y}`} fill="url(#concrete-grad)" stroke="#4b5563" strokeWidth="0.5" className="opacity-40" />
+                <ellipse cx={S_tc.x} cy={S_tc.y} rx={rx} ry={ry} fill="#1f2937" stroke="#4b5563" strokeWidth="0.5" className="opacity-50" />
 
                 <DimensionLine start={{x: S_br.x, y: S_br.y}} end={{x: S_tr.x, y: S_tr.y}} label={labelH} offset={30} active={isH} />
-                <line x1={S_tl.x} y1={S_tc.y} x2={S_tr.x} y2={S_tc.y} stroke={isL ? "#65a30d" : "#a8a29e"} strokeDasharray="2,2" strokeWidth={isL?2:1} />
-                <text x={S_tc.x} y={S_tc.y - 12} textAnchor="middle" fontSize={isL?14:10} fontWeight="bold" fill={isL ? "#365314" : "#57534e"}>{labelL}</text>
+                <DimensionLine start={S_tl} end={S_tr} label={labelD} offset={-15} active={isL} />
              </g>
           )
       } else { // Box
@@ -372,15 +374,15 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
           return (
               <g>
                   {/* Back Faces */}
-                  <path d={`M${SY.x} ${SY.y} L${SXY.x} ${SXY.y} L${SXYt.x} ${SXYt.y} L${SYt.x} ${SYt.y} Z`} fill="#f5f5f4" stroke="#e5e7eb" strokeDasharray="2,2" />
-                  <path d={`M${SXY.x} ${SXY.y} L${SX.x} ${SX.y} L${SXt.x} ${SXt.y} L${SXYt.x} ${SXYt.y} Z`} fill="#f5f5f4" stroke="#e5e7eb" strokeDasharray="2,2" />
+                  <path d={`M${SY.x} ${SY.y} L${SXY.x} ${SXY.y} L${SXYt.x} ${SXYt.y} L${SYt.x} ${SYt.y} Z`} fill="#111827" stroke="#374151" strokeDasharray="3,3" />
+                  <path d={`M${SXY.x} ${SXY.y} L${SX.x} ${SX.y} L${SXt.x} ${SXt.y} L${SXYt.x} ${SXYt.y} Z`} fill="#111827" stroke="#374151" strokeDasharray="3,3" />
 
                   <RenderRebar />
 
                   {/* Front Faces (Glass Effect) */}
-                  <path d={`M${S0.x} ${S0.y} L${SY.x} ${SY.y} L${SYt.x} ${SYt.y} L${S0t.x} ${S0t.y} Z`} fill="url(#concrete-grad)" stroke="#a8a29e" className="opacity-30" />
-                  <path d={`M${S0.x} ${S0.y} L${SX.x} ${SX.y} L${SXt.x} ${SXt.y} L${S0t.x} ${S0t.y} Z`} fill="url(#concrete-grad)" stroke="#a8a29e" className="opacity-30" />
-                  <path d={`M${S0t.x} ${S0t.y} L${SXt.x} ${SXt.y} L${SXYt.x} ${SXYt.y} L${SYt.x} ${SYt.y} Z`} fill="#e7e5e4" stroke="#a8a29e" className="opacity-40" />
+                  <path d={`M${S0.x} ${S0.y} L${SY.x} ${SY.y} L${SYt.x} ${SYt.y} L${S0t.x} ${S0t.y} Z`} fill="url(#concrete-grad)" stroke="#4b5563" strokeWidth="0.5" className="opacity-40" />
+                  <path d={`M${S0.x} ${S0.y} L${SX.x} ${SX.y} L${SXt.x} ${SXt.y} L${S0t.x} ${S0t.y} Z`} fill="url(#concrete-grad)" stroke="#4b5563" strokeWidth="0.5" className="opacity-40" />
+                  <path d={`M${S0t.x} ${S0t.y} L${SXt.x} ${SXt.y} L${SXYt.x} ${SXYt.y} L${SYt.x} ${SYt.y} Z`} fill="#1f2937" stroke="#4b5563" strokeWidth="0.5" className="opacity-60" />
 
                   <DimensionLine start={S0} end={S0t} label={labelH} offset={-30} active={isH} />
                   <DimensionLine start={S0} end={SX} label={labelL} offset={30} active={isL} />
@@ -391,84 +393,111 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
   };
 
   const Render2DContent = () => {
-      const { l, w, d, mainNos, cover } = vals;
+      const { l, w, d, mainNos, cover, labelL, labelW, labelD } = vals;
       const { scale: s, tx, ty } = transform2D;
-      const barColor = "#1f2937"; // Dark Gray for 2D Section
+      const barColor = "#f87171"; // Red-400
       
+      // Highlight flags
+      const isL = highlightKey?.includes('len') || highlightKey?.includes('dia');
+      const isW = highlightKey?.includes('width') || highlightKey?.includes('breadth');
+
       if (d > 0) {
           const r = (d/2) * s;
           const rCore = (d/2 - cover) * s;
+          
           return (
               <g>
-                  <circle cx={tx} cy={ty} r={r} fill="#e5e7eb" stroke="#374151" strokeWidth="2" />
+                  <circle cx={tx} cy={ty} r={r} fill="#1f2937" stroke="#4b5563" strokeWidth="2" />
                   <circle cx={tx} cy={ty} r={r * 0.75} fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4,3" />
+                  
+                  {/* Diameter Dimension */}
+                  <DimensionLine 
+                    start={{x: tx - r, y: ty - r - 20}} 
+                    end={{x: tx + r, y: ty - r - 20}} 
+                    label={labelD} 
+                    offset={0} 
+                    active={isL} 
+                  />
+
                   {/* Generate 2D Bars */}
                   {Array.from({length: mainNos}).map((_, i) => {
                       const ang = (i * 2 * Math.PI) / mainNos;
-                      return <circle key={i} cx={tx + rCore*Math.cos(ang)} cy={ty + rCore*Math.sin(ang)} r={3} fill={barColor} />
+                      return <circle key={i} cx={tx + rCore*Math.cos(ang)} cy={ty + rCore*Math.sin(ang)} r={4} fill={barColor} />
                   })}
-                  <text x={tx} y={ty + r + 20} textAnchor="middle" fontSize="10" fill="#6b7280" fontWeight="bold">CROSS SECTION</text>
+                  <text x={tx} y={ty + r + 35} textAnchor="middle" fontSize="11" fill="#9ca3af" fontWeight="800" style={{fontFamily: 'Inter'}}>CROSS SECTION</text>
               </g>
           )
       } else {
           const W = l * s;
           const H = w * s;
-          const cx = tx + W/2;
-          const cy = ty + H/2;
           const coreW = W - 2*cover*s;
           const coreH = H - 2*cover*s;
           
           return (
               <g>
-                  <rect x={tx} y={ty} width={W} height={H} fill="#e5e7eb" stroke="#374151" strokeWidth="2" />
-                  <rect x={tx+cover*s} y={ty+cover*s} width={coreW} height={coreH} fill="none" stroke="#ef4444" strokeWidth="1.5" rx="2" />
+                  <rect x={tx} y={ty} width={W} height={H} fill="#1f2937" stroke="#4b5563" strokeWidth="2" />
+                  <rect x={tx+cover*s} y={ty+cover*s} width={coreW} height={coreH} fill="none" stroke="#ef4444" strokeWidth="1.5" rx="4" />
                   
+                  {/* Dimensions */}
+                  <DimensionLine 
+                    start={{x: tx, y: ty}} 
+                    end={{x: tx + W, y: ty}} 
+                    label={labelL} 
+                    offset={-20} 
+                    active={isL} 
+                  />
+                  <DimensionLine 
+                    start={{x: tx, y: ty}} 
+                    end={{x: tx, y: ty + H}} 
+                    label={labelW} 
+                    offset={-20} 
+                    active={isW} 
+                  />
+
                   {/* Corner Bars */}
-                  <circle cx={tx+cover*s} cy={ty+cover*s} r={3} fill={barColor} />
-                  <circle cx={tx+W-cover*s} cy={ty+cover*s} r={3} fill={barColor} />
-                  <circle cx={tx+W-cover*s} cy={ty+H-cover*s} r={3} fill={barColor} />
-                  <circle cx={tx+cover*s} cy={ty+H-cover*s} r={3} fill={barColor} />
+                  <circle cx={tx+cover*s} cy={ty+cover*s} r={4} fill={barColor} />
+                  <circle cx={tx+W-cover*s} cy={ty+cover*s} r={4} fill={barColor} />
+                  <circle cx={tx+W-cover*s} cy={ty+H-cover*s} r={4} fill={barColor} />
+                  <circle cx={tx+cover*s} cy={ty+H-cover*s} r={4} fill={barColor} />
 
                   {/* Extra Bars */}
                   {mainNos > 4 && (
                       <>
-                        <circle cx={tx+W/2} cy={ty+cover*s} r={3} fill={barColor} />
-                        <circle cx={tx+W/2} cy={ty+H-cover*s} r={3} fill={barColor} />
+                        <circle cx={tx+W/2} cy={ty+cover*s} r={4} fill={barColor} />
+                        <circle cx={tx+W/2} cy={ty+H-cover*s} r={4} fill={barColor} />
                       </>
                   )}
 
-                  <text x={tx + W/2} y={ty + H + 20} textAnchor="middle" fontSize="10" fill="#6b7280" fontWeight="bold">CROSS SECTION</text>
+                  <text x={tx + W/2} y={ty + H + 30} textAnchor="middle" fontSize="11" fill="#9ca3af" fontWeight="800" style={{fontFamily: 'Inter'}}>CROSS SECTION</text>
               </g>
           )
       }
   };
 
   return (
-    <div className="w-full bg-white lg:bg-transparent rounded-[2rem] border border-stone-200 lg:border-none shadow-sm lg:shadow-none overflow-hidden flex flex-col h-[250px] lg:h-full lg:min-h-[500px]">
-        {/* Header - Visible on Mobile, Hidden on Desktop */}
-        <div className="flex lg:hidden items-center justify-between px-6 py-4 border-b border-stone-100 bg-stone-50/50">
-             <div className="flex items-center gap-2">
-                 <CubeIcon className="w-5 h-5 text-stone-400" />
-                 <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Geometry Preview</span>
-             </div>
-        </div>
-
+    <div className="w-full h-[250px] flex flex-col overflow-hidden rounded-[2rem] bg-white/5 border border-white/10 shadow-inner">
         {/* Content: Both 3D and 2D side-by-side */}
-        <div className="flex-1 flex flex-row bg-white lg:bg-transparent lg:rounded-[2rem] lg:border lg:border-stone-200 lg:shadow-sm">
+        <div className="flex-1 flex flex-row">
             {/* Left Side: 3D */}
-            <div className="flex-1 relative border-r border-stone-100 bg-white first:rounded-l-[2rem]">
-                 <div className="absolute top-4 left-4 z-10 p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+            <div className="flex-1 relative border-r border-white/10 first:rounded-l-[2rem] bg-black/20">
+                 <div className="absolute top-4 left-4 z-10 p-1 rounded-lg bg-blue-500/20 text-blue-400">
                     <CubeIcon className="w-4 h-4" />
                  </div>
                  <svg width="100%" height="100%" viewBox="0 0 300 320" preserveAspectRatio="xMidYMid meet" className="w-full h-full overflow-visible">
                      <defs>
                         <pattern id="grid-3d" width="40" height="40" patternUnits="userSpaceOnUse">
-                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e5e7eb" strokeWidth="0.5"/>
+                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#374151" strokeWidth="0.5"/>
                         </pattern>
                         <linearGradient id="concrete-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#f5f5f4" stopOpacity="0.8" />
-                            <stop offset="100%" stopColor="#d6d3d1" stopOpacity="0.8" />
+                            <stop offset="0%" stopColor="#374151" stopOpacity="0.8" />
+                            <stop offset="100%" stopColor="#1f2937" stopOpacity="0.8" />
                         </linearGradient>
+                        <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+                            <polygon points="0 0, 6 2, 0 4" fill="#4b5563" />
+                        </marker>
+                        <marker id="arrowhead-start" markerWidth="6" markerHeight="4" refX="0" refY="2" orient="auto-start-reverse">
+                            <polygon points="0 0, 6 2, 0 4" fill="#4b5563" />
+                        </marker>
                      </defs>
                      <rect width="100%" height="100%" fill="url(#grid-3d)" />
                      
@@ -479,14 +508,14 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
             </div>
 
             {/* Right Side: 2D */}
-            <div className="flex-1 relative bg-white last:rounded-r-[2rem]">
-                 <div className="absolute top-4 left-4 z-10 p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+            <div className="flex-1 relative bg-black/20 last:rounded-r-[2rem]">
+                 <div className="absolute top-4 left-4 z-10 p-1 rounded-lg bg-indigo-500/20 text-indigo-400">
                     <Square2StackIcon className="w-4 h-4" />
                  </div>
                  <svg width="100%" height="100%" viewBox="0 0 300 320" preserveAspectRatio="xMidYMid meet" className="w-full h-full overflow-visible">
                      <defs>
                         <pattern id="grid-2d" width="20" height="20" patternUnits="userSpaceOnUse">
-                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" strokeWidth="0.5"/>
+                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#374151" strokeWidth="0.5"/>
                         </pattern>
                      </defs>
                      <rect width="100%" height="100%" fill="url(#grid-2d)" />
@@ -500,3 +529,8 @@ export const Visualizer: React.FC<VisualizerProps> = ({ type, inputs, highlightK
     </div>
   );
 };
+
+// Simple Hero Icons wrappers to avoid huge imports in this file if needed, 
+// but sticking to existing pattern of importing from lib is better.
+function CubeIcon(props: any) { return <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>; }
+function Square2StackIcon(props: any) { return <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v8.25A2.25 2.25 0 0 0 6 16.5h2.25m8.25-8.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-7.5A2.25 2.25 0 0 1 8.25 18v-1.5m8.25-8.25h-6a2.25 2.25 0 0 0-2.25 2.25v6" /></svg>; }

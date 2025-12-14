@@ -42,6 +42,8 @@ export const MODULE_PREFIXES: Record<ModuleType, string> = {
 const CONCRETE_MIX_OPTIONS = [
   '1:1:2 (M25)',
   '1:1.5:3 (M20)',
+  '1:2:3 (M22)',
+  '1:2:3.5 (M21)',
   '1:2:4 (M15)',
   '1:3:6 (M10)',
   '1:4:8 (M7.5)',
